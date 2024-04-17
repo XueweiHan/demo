@@ -1,0 +1,67 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo6-ing
+  ############################
+  ## https 1
+  # annotations:
+  #   kubernetes.azure.com/tls-cert-keyvault-uri: https://hunter-demo6-keyvault.vault.azure.net/secrets/tls/730d30b8102b4e99991e88933e134117
+  ############################
+  ## https 3
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  ############################
+
+spec:
+  # ingressClassName: azure-application-gateway
+  ingressClassName: webapprouting.kubernetes.azure.com
+  ############################
+  ## https 1
+  # tls:
+  # - secretName: keyvault-demo6-ing
+  #   hosts:
+  #   - test.ajzxhub.net
+  #   - demo6.ajzxhub.net    
+  ############################
+  ## https 2
+  # tls:
+  # - secretName: http-tls
+  #   hosts:
+  #   - test.ajzxhub.net
+  #   - demo6.ajzxhub.net
+  ############################
+  ## https 3
+  tls:
+  - secretName: letsencrypt-key
+    hosts:
+    - test.ajzxhub.net
+    - demo6.ajzxhub.net
+  ############################
+  rules:
+  - host: demo6.ajzxhub.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo6-srv
+            port:
+              number: 80
+      - path: /demo6-1
+        pathType: Exact
+        backend:
+          service:
+            name: demo6-1-srv
+            port:
+              number: 80
+  - host: test.ajzxhub.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dotnet-srv
+            port:
+              number: 80

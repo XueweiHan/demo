@@ -1,0 +1,161 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.26.54.24096",
+      "templateHash": "8945275391199048359"
+    }
+  },
+  "parameters": {
+    "project_name": {
+      "type": "string",
+      "defaultValue": "demo6"
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev"
+    },
+    "k8_vmsize": {
+      "type": "string",
+      "defaultValue": "Standard_B2pls_v2"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "identity_name": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}-{1}-identity', parameters('project_name'), parameters('environment')))]"
+    },
+    "identity_federated_credentials_name": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}-{1}-service-account-credentials', parameters('project_name'), parameters('environment')))]"
+    },
+    "k8s_name": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}-{1}-aks', parameters('project_name'), parameters('environment')))]"
+    },
+    "k8s_dns_prefix": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}-{1}-dns-prefix', parameters('project_name'), parameters('environment')))]"
+    },
+    "k8s_node_resource_group": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}-{1}-aks-infra', parameters('project_name'), parameters('environment')))]"
+    },
+    "k8s_service_account_name": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}-sa', parameters('project_name')))]"
+    },
+    "keyvault_name": {
+      "type": "string",
+      "defaultValue": "[toLower(format('{0}-{1}-keyvault', parameters('project_name'), parameters('environment')))]"
+    }
+  },
+  "variables": {
+    "KeyVaultSecretsUserRoleId": "4633458b-17de-408a-b874-0445c86b69e6"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('keyvault_name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "enableRbacAuthorization": true,
+        "enableSoftDelete": false,
+        "sku": {
+          "family": "A",
+          "name": "premium"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[parameters('identity_name')]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}/{1}', parameters('identity_name'), parameters('identity_federated_credentials_name'))]",
+      "properties": {
+        "issuer": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('k8s_name')), '2024-01-01').oidcIssuerProfile.issuerURL]",
+        "subject": "[format('system:serviceaccount:default:{0}', parameters('k8s_service_account_name'))]",
+        "audiences": [
+          "api://AzureADTokenExchange"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identity_name'))]",
+        "[resourceId('Microsoft.ContainerService/managedClusters', parameters('k8s_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.KeyVault/vaults/{0}', parameters('keyvault_name'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyvault_name')), 'Key Vault Secrets User', deployment().name)]",
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('KeyVaultSecretsUserRoleId'))]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identity_name')), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identity_name'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyvault_name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ContainerService/managedClusters",
+      "apiVersion": "2024-01-01",
+      "name": "[parameters('k8s_name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "kubernetesVersion": "1.29.2",
+        "enableRBAC": true,
+        "dnsPrefix": "[parameters('k8s_dns_prefix')]",
+        "nodeResourceGroup": "[parameters('k8s_node_resource_group')]",
+        "agentPoolProfiles": [
+          {
+            "name": "nodepool",
+            "mode": "System",
+            "vmSize": "[parameters('k8_vmsize')]",
+            "osType": "Linux",
+            "osSKU": "AzureLinux",
+            "type": "VirtualMachineScaleSets",
+            "enableAutoScaling": false,
+            "count": 1
+          }
+        ],
+        "ingressProfile": {
+          "webAppRouting": {
+            "enabled": true
+          }
+        },
+        "securityProfile": {
+          "workloadIdentity": {
+            "enabled": true
+          }
+        },
+        "oidcIssuerProfile": {
+          "enabled": true
+        },
+        "servicePrincipalProfile": {
+          "clientId": "msi"
+        }
+      },
+      "sku": {
+        "name": "Base",
+        "tier": "Free"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    }
+  ]
+}

@@ -1,0 +1,166 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hunter-sa
+  annotations:
+    azure.workload.identity/client-id: 337a90e2-9709-441e-b3ab-e587b0c7a4ce
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo6-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo6
+  template:
+    metadata:
+      labels:
+        app: demo6
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: hunter-sa
+      # runtimeClassName: kata-cc-isolation
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: demo6-app
+          image: xueweihan/demo6:v1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo6-srv
+spec:
+  # type: LoadBalancer
+  type: ClusterIP
+  selector:
+    app: demo6
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo6-1-dpl
+spec:
+  selector:
+    matchLabels:
+      app: demo6-1
+  template:
+    metadata:
+      labels:
+        app: demo6-1
+    spec:
+      containers:
+        - name: demo6-1-app
+          image: xueweihan/demo6:v1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo6-1-srv
+spec:
+  type: LoadBalancer
+  selector:
+    app: demo6-1
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo6-ing
+  ############################
+  ## https 1
+  # annotations:
+  #   kubernetes.azure.com/tls-cert-keyvault-uri: https://hunter-demo6-keyvault.vault.azure.net/secrets/tls/730d30b8102b4e99991e88933e134117
+  ############################
+  ## https 3
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  ############################
+spec:
+  # ingressClassName: azure-application-gateway
+  ingressClassName: webapprouting.kubernetes.azure.com
+  ############################
+  ## https 1
+  # tls:
+  # - secretName: keyvault-demo6-ing
+  #   hosts:
+  #   - test.ajzxhub.net
+  #   - demo6.ajzxhub.net    
+  ############################
+  ## https 2
+  # tls:
+  # - secretName: http-tls
+  #   hosts:
+  #   - test.ajzxhub.net
+  #   - demo6.ajzxhub.net
+  ############################
+  ## https 3
+  tls:
+  - secretName: letsencrypt-key
+    hosts:
+    - test.ajzxhub.net
+    - demo6.ajzxhub.net
+  ############################
+  rules:
+  - host: test.ajzxhub.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo6-srv
+            port:
+              number: 80
+      - path: /demo6-1
+        pathType: Exact
+        backend:
+          service:
+            name: demo6-1-srv
+            port:
+              number: 80
+  - host: demo6.ajzxhub.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo6-srv
+            port:
+              number: 80
+      - path: /demo6-1
+        pathType: Exact
+        backend:
+          service:
+            name: demo6-1-srv
+            port:
+              number: 80
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: hunterhan37@msn.com
+    privateKeySecretRef:
+      name: letsencrypt-key
+    solvers:
+    - http01:
+        ingress:
+          ingressClassName: webapprouting.kubernetes.azure.com
