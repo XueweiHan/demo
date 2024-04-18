@@ -20,7 +20,6 @@ project.lock.json
 /data
 .secrets
 appsettings.json
-local.settings.json
 
 node_modules
 dist
@@ -49,6 +48,4 @@ __azurite_db*__.json
 
 
 
-func-app
-local.settings.json
-azfunc.yaml
+azfunc

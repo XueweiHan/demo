@@ -48,9 +48,7 @@ resource identity_federated_credentials 'Microsoft.ManagedIdentity/userAssignedI
   properties: {
     issuer: aks_resource.properties.oidcIssuerProfile.issuerURL
     subject: 'system:serviceaccount:default:${aks_service_account_name}'
-    audiences: [
-      'api://AzureADTokenExchange'
-    ]
+    audiences: ['api://AzureADTokenExchange']
   }
 }
 

@@ -12,7 +12,12 @@ az deployment group create -g hunter-demo6-rg --template-file azfunc.bicep
 ```
 # Local func run
 ```
-sed s/__KEY__/$(az storage account keys list -n hunterdemo6sa -g hunter-demo6-rg --q "[0].value" -o tsv)/ local.settings.template.json > local.settings.json
+
+az role assignment create --role "Storage Account Contributor" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
+
+az role assignment create --role "Storage Blob Data Owner" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
+
+az role assignment create --role "Storage Queue Data Contributor" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
 
 go build .
 
@@ -23,8 +28,8 @@ if you are running in local box not in dev container, you can test url: http://l
 # Local container run
 ```
 docker build -t xueweihan/demo6-func:0.1 .
-docker run --rm -it -p 8083:80 -e AzureWebJobsStorage="DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=hunterdemo6sa;AccountKey=$(az storage account keys list -n hunterdemo6sa -g hunter-demo6-rg --q "[0].value" -o tsv)" xueweihan/demo6-func:0.1
-
+docker run --rm -it -p 8083:80 xueweihan/demo6-func:0.1
+device login...
 test url: http://localhost:8083/api/hello
 ```
 # deploy to azure function app
@@ -39,11 +44,7 @@ docker push xueweihan/demo6-func:0.1
 ```
 # deploy to aks
 ```
-az login
-az account set --subscription b47beaaf-7461-4b34-844a-7105d6b8c0d7
-az configure --defaults location=eastus
-
-sed s/__KEY__/$(az storage account keys list -n hunterdemo6sa -g hunter-demo6-rg --q "[0].value" -o tsv)/ azfunc.template.yaml > azfunc.yaml
+az aks get-credentials -n hunter-demo6-aks -g hunter-demo6-rg
 
 kubectl apply -f azfunc.yaml
 

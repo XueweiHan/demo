@@ -1,0 +1,15 @@
+# docker compose file for build linux devbox
+version: "3"
+services:
+  devbox:
+    container_name: linuxbox
+    image: torusdev.azurecr.io/devlinux
+    ports:
+      - 8000-8060:8000-8060
+      - 7071:7071
+    volumes:
+      - ./:/src
+      - //var/run/docker.sock:/var/run/docker.sock
+    stdin_open: true
+    tty: true
+    command: /bin/bash
