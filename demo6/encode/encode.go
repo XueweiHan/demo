@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github/XueweiHan/demo/demo6/key"
+	"github.com/XueweiHan/demo/demo6/key"
 
 	"github.com/golang-jwt/jwt/v5"
 )

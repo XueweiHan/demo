@@ -55,6 +55,13 @@ spec:
             name: demo6-1-srv
             port:
               number: 80
+      - path: /api/hello
+        pathType: Exact
+        backend:
+          service:
+            name: azfunc-srv
+            port:
+              number: 80
   - host: test.ajzxhub.net
     http:
       paths:

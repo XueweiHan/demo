@@ -1,4 +1,5 @@
 # nginx for AKS
+```
 az login
 az account set --subscription b47beaaf-7461-4b34-844a-7105d6b8c0d7
 az configure --defaults location=eastus
@@ -7,17 +8,21 @@ az group create -g hunter-demo6-rg
 az deployment group create -g hunter-demo6-rg --template-file demo6.bicep
 az identity show -g hunter-demo6-rg -n hunter-demo6-identity --query 'clientId' -o tsv
 update the workload identity id in demo6.yaml file
+```
 
 
 # docker build 
+```
 docker build -t xueweihan/demo6:0.1 .
 docker run --rm -p 8081:8081 xueweihan/demo6:0.1
 test http://localhost:8081/https/www.google.com/search?q=hello in browser
 docker login
 docker push xueweihan/demo6:0.1
+```
 
 
 # confcom
+```
 az confcom katapolicygen -y demo6.yaml --print-policy | base64 -d | sha256sum | cut -d' ' -f1
 az attestation show -n hunterdemo6attest -g hunter-demo6-rg --query attestUri -o tsv
 https://hunterdemo6attest.eus.attest.azure.net
@@ -25,9 +30,11 @@ update the key-release-policy.json
 
 az aks get-credentials -n hunter-demo6-aks -g hunter-demo6-rg
 kubectl apply -f demo6.yaml
+```
 
 
 # ingress
+```
 
 kubectl apply -f demo6-1.yaml
 kubectl apply -f ingress.yaml
@@ -35,15 +42,19 @@ kubectl apply -f ingress.yaml
 kubectl get ingress
 update dns record
 
+```
 
 # https 3 (aks + nginx + cert-manager + let's encrypt)
+```
 
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
 kubectl get pods -n cert-manager
 kubectl apply -f issuer.yaml
 kubectl describe secret letsencrypt-key
+```
 
 # test key vault
+```
 az role assignment create --role "Key Vault Secrets Officer" --scope $(az keyvault show -n hunter-demo6-keyvault --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
 az keyvault secret set --vault-name hunter-demo6-keyvault -n test1 --value "hello world!"
 
@@ -67,6 +78,7 @@ go run encode/encode.go pub.pem "Top secret!"
 test:
 https://demo6.ajzxhub.net/demo6-2?vault=hunter-demo6-keyvault&attest=hunterdemo6attest.eus&key=key1&message=
 
+```
 
 
 
@@ -81,6 +93,7 @@ https://demo6.ajzxhub.net/demo6-2?vault=hunter-demo6-keyvault&attest=hunterdemo6
 # self-signed tls for testing
 
 # https 1 (self-signed tls cert)
+```
 openssl req -new -x509 -nodes -out crt.pem -keyout key.pem -subj "/CN=test.ajzxhub.net" -addext "subjectAltName=DNS:test.ajzxhub.net"
 
 openssl pkcs12 -export -in crt.pem -inkey key.pem -out tls.pfx
@@ -103,8 +116,10 @@ az network dns zone show -g hunter-demo6-rg -n demo6.ajzxhub.net --query id -o t
 az aks approuting zone add -g hunter-demo6-rg -n hunter-demo6-aks --attach-zones --ids=/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/resourceGroups/hunter-demo6-rg/providers/Microsoft.Network/dnszones/demo6.ajzxhub.net
 
 
+```
 # https 2 (self-signed tls cert)
 
+```
 kubectl create secret tls http-tls --key key.pem --cert crt.pem
 
 ingress spec:
@@ -113,12 +128,13 @@ ingress spec:
     hosts:
     - test.ajzxhub.net
     - demo6.ajzxhub.net
+```
   
 
 
 
 
-----
+# --- deprecated -------------------------------------------------- 
 az group create -g test1-rg
 az aks create -g test1-rg -n test1-aks --enable-app-routing --node-vm-size standard_b2pls_v2 --os-sku AzureLinux --node-count 1 --node-resource-group test1-aks-infra
 az aks get-credentials -n test1-aks -g test1-rg

@@ -1,4 +1,4 @@
-module github/XueweiHan/demo/demo6
+module github.com/XueweiHan/demo/demo6
 
 go 1.22.1
 

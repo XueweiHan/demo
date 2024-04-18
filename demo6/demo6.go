@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"runtime"
 
-	"github/XueweiHan/demo/demo6/azure"
-	"github/XueweiHan/demo/demo6/k8s"
-	"github/XueweiHan/demo/demo6/key"
-	"github/XueweiHan/demo/demo6/keyrelease"
+	"github.com/XueweiHan/demo/demo6/azure"
+	"github.com/XueweiHan/demo/demo6/k8s"
+	"github.com/XueweiHan/demo/demo6/key"
+	"github.com/XueweiHan/demo/demo6/keyrelease"
 )
 
 func main() {

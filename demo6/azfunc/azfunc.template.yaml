@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azfunc-dpl
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: azfunc
+  template:
+    metadata:
+      labels:
+        app: azfunc
+    spec:
+      containers:
+      - name: azfunc
+        image: xueweihan/demo6-func:0.1
+        ports:
+        - containerPort: 80
+        env:
+        # - name: AzureFunctionsJobHost__functions__0
+        #   value: queue1
+        # - name: AzureFunctionsJobHost__functions__1
+        #   value: timer1
+        # - name: AzureFunctionsJobHost__functions__2
+        #   value: hello
+        - name: AzureWebJobsStorage
+          value: DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=hunterdemo6sa;AccountKey=__KEY__
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 240
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+        startupProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 240
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: azfunc-srv
+spec:
+  type: LoadBalancer
+  selector:
+    app: azfunc
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
