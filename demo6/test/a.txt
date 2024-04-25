@@ -1,0 +1,44 @@
+{
+  "description": null,
+  "displayName": "AKS Prometheus Metrics Addon",
+  "enforcementMode": "Default",
+  "id": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/providers/Microsoft.Authorization/policyAssignments/AKS Prometheus Metrics Addon",
+  "identity": {
+    "principalId": "21e96f8d-5e05-4eaf-b8e9-827d7473d763",
+    "tenantId": "cdc5aeea-15c5-4db6-b079-fcadd2505dc2",
+    "type": "SystemAssigned",
+    "userAssignedIdentities": null
+  },
+  "location": "eastus",
+  "metadata": {
+    "createdBy": "620d2777-78d3-4f42-8cbd-cc834bbcf9cb",
+    "createdOn": "2024-04-25T18:25:53.5653011Z",
+    "updatedBy": null,
+    "updatedOn": null
+  },
+  "name": "AKS Prometheus Metrics Addon",
+  "nonComplianceMessages": null,
+  "notScopes": null,
+  "parameters": {
+    "azureMonitorWorkspaceLocation": {
+      "value": "eastus"
+    },
+    "azureMonitorWorkspaceResourceId": {
+      "value": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/resourcegroups/aks-monitoring-rg/providers/microsoft.monitor/accounts/aks-monitor-workspace"
+    },
+    "enableWindowsRecordingRules": {
+      "value": true
+    }
+  },
+  "policyDefinitionId": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/providers/Microsoft.Authorization/policyDefinitions/AKS Prometheus Metrics Addon",
+  "scope": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7",
+  "systemData": {
+    "createdAt": "2024-04-25T18:25:52.271978+00:00",
+    "createdBy": "xueweihan_debug@prdtrs01.prod.outlook.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2024-04-25T18:25:52.271978+00:00",
+    "lastModifiedBy": "xueweihan_debug@prdtrs01.prod.outlook.com",
+    "lastModifiedByType": "User"
+  },
+  "type": "Microsoft.Authorization/policyAssignments"
+}

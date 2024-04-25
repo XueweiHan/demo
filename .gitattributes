@@ -3,17 +3,20 @@
 
 # Explicitly declare text files you want to always be normalized and converted
 # to native line endings on checkout.
+*.md text
+*.txt text
 *.go text
+*.html text
+*.yml text
 *.yaml text
 *.bicep text
 *.json text
-DOckerfile text
+Dockerfile text
 *.pem text
 *.config text
 *.csproj text
 *.sln text
 *.cs text
-*.md text
 
 
 # Declare files that will always have CRLF line endings on checkout.

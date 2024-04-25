@@ -5,14 +5,35 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"runtime"
+	"time"
 
 	"github.com/XueweiHan/demo/demo6/azure"
 	"github.com/XueweiHan/demo/demo6/k8s"
 	"github.com/XueweiHan/demo/demo6/key"
 	"github.com/XueweiHan/demo/demo6/keyrelease"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var (
+	opsProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "demo6_test_ops_total",
+		Help: "The total number of processed events",
+	})
+)
+
+func testOps() {
+	for {
+		opsProcessed.Inc()
+
+		time.Sleep(time.Duration(rand.Int31n(2)) * time.Second)
+	}
+}
 
 func main() {
 	port := "8081"
@@ -87,6 +108,10 @@ func main() {
 		log.Printf("%s %s", r.Method, r.URL.Path)
 		fmt.Fprint(w, k8s.GetK8sPods())
 	})
+
+	// prometheus metrics
+	http.Handle("/metrics", promhttp.Handler())
+	go testOps()
 
 	http.ListenAndServe(":"+port, nil)
 }

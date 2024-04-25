@@ -1,0 +1,45 @@
+{
+  "description": null,
+  "displayName": "Prometheus Metrics addon for Torus Playground",
+  "enforcementMode": "DoNotEnforce",
+  "id": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/providers/Microsoft.Authorization/policyAssignments/ddfdbbd18e55484d8c5114a5",
+  "identity": {
+    "principalId": "01a0c36a-cddf-48d7-bee8-7789c4310234",
+    "tenantId": "cdc5aeea-15c5-4db6-b079-fcadd2505dc2",
+    "type": "SystemAssigned",
+    "userAssignedIdentities": null
+  },
+  "location": "eastus",
+  "metadata": {
+    "createdBy": "620d2777-78d3-4f42-8cbd-cc834bbcf9cb",
+    "createdOn": "2024-04-25T00:36:02.8220349Z",
+    "parameterScopes": {},
+    "updatedBy": "620d2777-78d3-4f42-8cbd-cc834bbcf9cb",
+    "updatedOn": "2024-04-25T18:03:57.4000345Z"
+  },
+  "name": "ddfdbbd18e55484d8c5114a5",
+  "nonComplianceMessages": [],
+  "notScopes": [],
+  "parameters": {
+    "azureMonitorWorkspaceLocation": {
+      "value": "eastus"
+    },
+    "azureMonitorWorkspaceResourceId": {
+      "value": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/resourcegroups/aks-monitoring-rg/providers/microsoft.monitor/accounts/aks-monitor-workspace"
+    },
+    "enableWindowsRecordingRules": {
+      "value": true
+    }
+  },
+  "policyDefinitionId": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/providers/Microsoft.Authorization/policyDefinitions/Prometheus Metrics addon",
+  "scope": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7",
+  "systemData": {
+    "createdAt": "2024-04-25T00:36:01.675680+00:00",
+    "createdBy": "xueweihan_debug@prdtrs01.prod.outlook.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2024-04-25T18:03:57.026180+00:00",
+    "lastModifiedBy": "xueweihan_debug@prdtrs01.prod.outlook.com",
+    "lastModifiedByType": "User"
+  },
+  "type": "Microsoft.Authorization/policyAssignments"
+}

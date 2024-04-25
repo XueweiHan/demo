@@ -2,16 +2,17 @@ param project_name string = 'hunter'
 param environment string = 'demo6'
 
 /*
-param aks_vmsize string = 'Standard_B2pls_v2'
 param aks_tier string = 'Free'
-param aks_node_count int = 1
 param keyvault_sku string = 'Standard'
 /*/
-param aks_vmsize string = 'Standard_DC4as_cc_v5'
 param aks_tier string = 'Standard'
-param aks_node_count int = 3
 param keyvault_sku string = 'Premium'
 //*/
+
+param aks_vmsize string = (aks_tier == 'Free') ? 'Standard_B2pls_v2' : 'Standard_DC4as_cc_v5'
+param aks_availability_zones array = ['1', '2', '3']
+param aks_system_node_count int = 1
+param aks_user_node_count int = 1
 
 param location string = resourceGroup().location
 param identity_name string = toLower('${project_name}-${environment}-identity')
@@ -88,27 +89,44 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-01-01' = 
     enableRBAC: true
     dnsPrefix: aks_dns_prefix
     nodeResourceGroup: aks_node_resource_group
-    agentPoolProfiles: [
+    agentPoolProfiles: (aks_tier == 'Free') ? [
       {
         name: 'nodepool'
         mode: 'System'
         vmSize: aks_vmsize
         osType: 'Linux'
         osSKU: 'AzureLinux'
-        workloadRuntime: 'KataCcIsolation'
         enableAutoScaling: false
-        count: aks_node_count
+        count: 1
+      }
+    ] : [
+      {
+        name: 'agentpool'
+        mode: 'System'
+        vmSize: aks_vmsize
+        osType: 'Linux'
+        osSKU: 'AzureLinux'
+        enableAutoScaling: true
+        count: aks_system_node_count
+        minCount: aks_system_node_count
+        maxCount: 10
+        availabilityZones: aks_availability_zones
+        nodeTaints: ['CriticalAddonsOnly=true:NoSchedule']
+      }
+      {
+        name: 'userpool'
+        mode: 'User'
+        vmSize: aks_vmsize
+        osType: 'Linux'
+        osSKU: 'AzureLinux'
+        workloadRuntime: 'KataCcIsolation'
+        enableAutoScaling: true
+        count: aks_user_node_count
+        minCount: aks_user_node_count
+        maxCount: 10
+        availabilityZones: aks_availability_zones
       }
     ]
-    // addonProfiles: {
-    //   azureKeyvaultSecretsProvider: {
-    //     enabled: true
-    //     config: {
-    //       enableSecretRotation: 'true'
-    //       rotationPollInterval: '2m'
-    //     }
-    //   }
-    // }
     ingressProfile: {
       webAppRouting: {
         enabled: true
@@ -127,6 +145,11 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-01-01' = 
     }
     servicePrincipalProfile: {
       clientId: 'msi'
+    }
+    workloadAutoScalerProfile: {
+      keda: {
+        enabled: true
+      }
     }
   }
   sku: {
