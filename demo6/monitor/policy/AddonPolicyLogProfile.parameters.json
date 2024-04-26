@@ -1,0 +1,9 @@
+{
+  "logAnalyticsWorkspaceResourceId": {
+    "type": "string",
+    "metadata": {
+    "displayName": "Azure Log Analytics Workspace Resource Id",
+      "description": "Resource Id of the existing Azure Log Analytics Workspace"
+    }
+  }
+}

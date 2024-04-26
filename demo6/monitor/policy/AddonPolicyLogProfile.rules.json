@@ -1,0 +1,142 @@
+{
+	"if": {
+		"field": "type",
+		"equals": "Microsoft.ContainerService/managedClusters"
+	},
+	"then": {
+		"effect": "deployIfNotExists",
+		"details": {
+			"type": "Microsoft.ContainerService/managedClusters",
+			"name": "[field('name')]",
+			"roleDefinitionIds": [
+				"/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+			],
+			"existenceCondition": {
+				"field": "Microsoft.ContainerService/managedClusters/addonProfiles.omsagent.enabled",
+				"equals": "true"
+			},
+			"deployment": {
+				"properties": {
+					"mode": "incremental",
+					"parameters": {
+						"logAnalyticsWorkspaceResourceId": {
+							"value": "[parameters('logAnalyticsWorkspaceResourceId')]"
+						},
+						"clusterResourceId": {
+							"value": "[field('id')]"
+						},
+						"clusterLocation": {
+							"value": "[field('location')]"
+						}
+					},
+					"template": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+              "logAnalyticsWorkspaceResourceId": {
+								"type": "string"
+              },
+              "clusterResourceId": {
+								"type": "string"
+              },
+              "clusterLocation": {
+								"type": "string"
+              }
+            },
+						"variables": {
+              "aks_name": "[split(parameters('clusterResourceId'),'/')[8]]",
+              "location": "[parameters('clusterLocation')]",
+              "log_analytics_workspace_resource_id": "[parameters('logAnalyticsWorkspaceResourceId')]",
+							"log_dcr_name": "[concat(variables('aks_name'), '-log-dcr')]",
+							"log_dcra_name": "[concat(variables('aks_name'), '-log-dcra')]"
+						},
+            "resources": [
+              {
+                "type": "Microsoft.ContainerService/managedClusters",
+                "apiVersion": "2024-01-01",
+                "name": "[variables('aks_name')]",
+                "location": "[variables('location')]",
+                "properties": {
+                  "addonProfiles": {
+                    "omsagent": {
+                      "enabled": true,
+                      "config": {
+                        "logAnalyticsWorkspaceResourceID": "[variables('log_analytics_workspace_resource_id')]",
+                        "useAADAuth": "true"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Microsoft.Insights/dataCollectionRules",
+                "apiVersion": "2022-06-01",
+                "name": "[variables('log_dcr_name')]",
+                "location": "[variables('location')]",
+                "kind": "Linux",
+                "properties": {
+                  "dataSources": {
+                    "extensions": [
+                      {
+                        "name": "ContainerInsightsExtension",
+                        "extensionName": "ContainerInsights",
+                        "streams": [
+                          "Microsoft-ContainerLog",
+                          "Microsoft-ContainerLogV2",
+                          "Microsoft-KubeEvents",
+                          "Microsoft-KubePodInventory"
+                        ],
+                        "extensionSettings": {
+                          "dataCollectionSettings": {
+                            "interval": "1m",
+                            "namespaceFilteringMode": "Off",
+                            "enableContainerLogV2": true
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "dataFlows": [
+                    {
+                      "streams": [
+                        "Microsoft-ContainerLog",
+                        "Microsoft-ContainerLogV2",
+                        "Microsoft-KubeEvents",
+                        "Microsoft-KubePodInventory"
+                      ],
+                      "destinations": [
+                        "ciworkspace"
+                      ]
+                    }
+                  ],
+                  "destinations": {
+                    "logAnalytics": [
+                      {
+                        "name": "ciworkspace",
+                        "workspaceResourceId": "[variables('log_analytics_workspace_resource_id')]"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "Microsoft.Insights/dataCollectionRuleAssociations",
+                "apiVersion": "2022-06-01",
+                "scope": "[format('Microsoft.ContainerService/managedClusters/{0}', variables('aks_name'))]",
+                "name": "[variables('log_dcr_name')]",
+                "properties": {
+                  "description": "Association of data collection rule. Deleting this association will break the data collection for this AKS Cluster.",
+                  "dataCollectionRuleId": "[resourceId('Microsoft.Insights/dataCollectionRules', variables('log_dcr_name'))]"
+                },
+                "dependsOn": [
+                  "[resourceId('Microsoft.ContainerService/managedClusters', variables('aks_name'))]",
+                  "[resourceId('Microsoft.Insights/dataCollectionRules', variables('log_dcr_name'))]"
+                ]
+              }
+            ]
+          }
+				}
+			}
+		}
+	}
+}

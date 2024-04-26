@@ -18,40 +18,15 @@
 			"deployment": {
 				"properties": {
 					"mode": "incremental",
-					"parameters": {
-						"azureMonitorWorkspaceResourceId": {
-							"value": "[parameters('azureMonitorWorkspaceResourceId')]"
-						},
-						"azureMonitorWorkspaceLocation": {
-							"value": "[parameters('azureMonitorWorkspaceLocation')]"
-						},
-						"metricLabelsAllowlist": {
-							"value": "[parameters('metricLabelsAllowlist')]"
-						},
-						"metricAnnotationsAllowList": {
-							"value": "[parameters('metricAnnotationsAllowList')]"
-						},
-						"enableWindowsRecordingRules": {
-							"value": "[parameters('enableWindowsRecordingRules')]"
-						},
-						"clusterResourceId": {
-							"value": "[field('id')]"
-						},
-						"clusterLocation": {
-							"value": "[field('location')]"
-						}
-					},
 					"template": {
 						"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
 						"contentVersion": "1.0.0.0",
 						"parameters": {
 							"azureMonitorWorkspaceResourceId": {
-								"type": "string",
-								"defaultValue": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/resourcegroups/aks-monitoring-rg/providers/microsoft.monitor/accounts/aks-monitor-workspace"
+								"type": "string"
 							},
 							"azureMonitorWorkspaceLocation": {
-								"type": "string",
-								"defaultValue": "eastus"
+								"type": "string"
 							},
 							"metricLabelsAllowlist": {
 								"type": "string",
@@ -62,8 +37,7 @@
 								"defaultValue": ""
 							},
 							"enableWindowsRecordingRules": {
-								"type": "bool",
-								"defaultValue": false
+								"type": "bool"
 							},
 							"clusterResourceId": {
 								"type": "string"
@@ -76,19 +50,15 @@
 							"clusterSubscriptionId": "[split(parameters('clusterResourceId'),'/')[2]]",
 							"clusterResourceGroup": "[split(parameters('clusterResourceId'),'/')[4]]",
 							"clusterName": "[split(parameters('clusterResourceId'),'/')[8]]",
-							"dceName": "[Concat('MSProm', '-', parameters('azureMonitorWorkspaceLocation'), '-', variables('clusterName'))]",
-							"dcrName": "[Concat('MSProm', '-', parameters('azureMonitorWorkspaceLocation'), '-', variables('clusterName'))]",
-							"dcraName": "[Concat('MSProm', '-', parameters('clusterLocation'), '-', variables('clusterName'))]",
-							"nodeRecordingRuleGroup": "NodeRecordingRulesRuleGroup-",
-							"nodeRecordingRuleGroupName": "[concat(variables('nodeRecordingRuleGroup'), variables('clusterName'))]",
+							"dceName": "[format('{0}-metrics-dce', variables('clusterName'))]",
+							"dcrName": "[concat(variables('clusterName'), '-msp-dcr')]",
+							"dcraName": "[concat(variables('clusterName'), '-msp-dcra')]",
+							"nodeRecordingRuleGroupName": "[concat(variables('clusterName'), '-node-record-prg')]",
 							"nodeRecordingRuleGroupDescription": "Node Recording Rules RuleGroup",
-							"kubernetesRecordingRuleGroup": "KubernetesRecordingRulesRuleGroup-",
-							"kubernetesRecordingRuleGroupName": "[concat(variables('kubernetesRecordingRuleGroup'), variables('clusterName'))]",
+							"kubernetesRecordingRuleGroupName": "[concat(variables('clusterName'), '-k8s-record-prg')]",
 							"kubernetesRecordingRuleGroupDescription": "Kubernetes Recording Rules RuleGroup",
-							"nodeRecordingRuleGroupWin": "NodeRecordingRulesRuleGroup-Win-",
-							"nodeAndKubernetesRecordingRuleGroupWin": "NodeAndKubernetesRecordingRulesRuleGroup-Win-",
-							"nodeRecordingRuleGroupNameWin": "[concat(variables('nodeRecordingRuleGroupWin'), variables('clusterName'))]",
-							"nodeAndKubernetesRecordingRuleGroupNameWin": "[concat(variables('nodeAndKubernetesRecordingRuleGroupWin'), variables('clusterName'))]",
+							"nodeRecordingRuleGroupNameWin": "[concat(variables('clusterName'), '-node-record-win-prg')]",
+							"nodeAndKubernetesRecordingRuleGroupNameWin": "[concat(variables('clusterName'), '-node-k8s-record-win-prg')]",
 							"RecordingRuleGroupDescriptionWin": "Kubernetes Recording Rules RuleGroup for Win",
 							"version": " - 0.1"
 						},
@@ -545,6 +515,29 @@
 								}
 							}
 						]
+					},
+					"parameters": {
+						"azureMonitorWorkspaceResourceId": {
+							"value": "[parameters('azureMonitorWorkspaceResourceId')]"
+						},
+						"azureMonitorWorkspaceLocation": {
+							"value": "[parameters('azureMonitorWorkspaceLocation')]"
+						},
+						"metricLabelsAllowlist": {
+							"value": "[parameters('metricLabelsAllowlist')]"
+						},
+						"metricAnnotationsAllowList": {
+							"value": "[parameters('metricAnnotationsAllowList')]"
+						},
+						"enableWindowsRecordingRules": {
+							"value": "[parameters('enableWindowsRecordingRules')]"
+						},
+						"clusterResourceId": {
+							"value": "[field('id')]"
+						},
+						"clusterLocation": {
+							"value": "[field('location')]"
+						}
 					}
 				}
 			}
