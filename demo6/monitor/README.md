@@ -19,29 +19,25 @@ kubectl apply -f ama-metrics-settings-configmap.yaml
 ```
 
 
-# policy (with this policy, we can skip the monitor.bicep deployment)
+# metrics policy (with this policy, we can skip the monitor.bicep deployment)
 ```
 https://github.com/Azure/prometheus-collector/tree/main/AddonPolicyTemplate
 
 az policy definition create -n aks-prometheus-metrics-addon --display-name "AKS Prometheus Metrics Addon" -m Indexed --metadata version=1.0.0 category=Kubernetes --rules ./AddonPolicyMetricsProfile.rules.json --params ./AddonPolicyMetricsProfile.parameters.json
 
-
-
-manually create policy assignment
-or
-az deployment sub create --template-file policyAssign.bicep --parameters "azureMonitorWorkspaceResourceId=$(az monitor account show -n AKS-Monitor-Workspace -g AKS-Monitoring-rg --query id -o tsv)" --parameters azureMonitorWorkspaceLocation=eastus --parameters enableWindowsRecordingRules=true --parameters "policyDefinitionId=$(az policy definition show -n aks-prometheus-metrics-addon --query id -o tsv)"
+az deployment sub create --template-file metricsPolicyAssign.bicep --parameters "azureMonitorWorkspaceResourceId=$(az monitor account show -n AKS-Monitor-Workspace -g AKS-Visibility-rg --query id -o tsv)" --parameters azureMonitorWorkspaceLocation=$(az monitor account show -n AKS-Monitor-Workspace -g AKS-Visibility-rg --query location -o tsv) --parameters enableWindowsRecordingRules=true --parameters "policyDefinitionId=$(az policy definition show -n aks-prometheus-metrics-addon --query id -o tsv)"
 
 
 
 
 az role assignment create --role "Grafana Admin" --scope $(az grafana show -n aks-monitoring-grafana -g aks-monitoring-rg --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
-
-
+```
+# log policy (with this policy, we can skip the log.bicep deployment)
+```
 
 az policy definition create -n aks-log-addon --display-name "AKS Log Addon" -m Indexed --metadata version=1.0.0 category=Kubernetes --rules ./AddonPolicyLogProfile.rules.json --params ./AddonPolicyLogProfile.parameters.json
 
-az monitor log-analytics workspace show -n AKS-Log-Analytics-Workspace -g AKS-Monitoring-rg --query id -o tsv
-
+az deployment sub create --template-file logPolicyAssign.bicep --parameters "logAnalyticsWorkspaceResourceId=$(az monitor log-analytics workspace show -n AKS-Log-Analytics-Workspace -g AKS-Visibility-rg --query id -o tsv)" --parameters logAnalyticsWorkspaceLocation=$(az monitor log-analytics workspace show -n AKS-Log-Analytics-Workspace -g AKS-Visibility-rg --query location -o tsv) --parameters "policyDefinitionId=$(az policy definition show -n aks-log-addon --query id -o tsv)"
 
 
 ```
