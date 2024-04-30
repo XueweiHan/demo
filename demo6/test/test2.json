@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.26.170.59819",
+      "templateHash": "6789239727593704367"
+    }
+  },
+  "variables": {
+    "uaiList": [
+      "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'uai')]",
+      "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'uai2')]",
+      "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'uai3')]"
+    ]
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "uai",
+      "location": "[resourceGroup().location]"
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "uai2",
+      "location": "[resourceGroup().location]"
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "uai3",
+      "location": "[resourceGroup().location]"
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-09-01",
+      "name": "vm",
+      "location": "[resourceGroup().location]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": "[union(variables('uaiList'), createArray(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'uai')))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'uai')]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'uai2')]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'uai3')]"
+      ]
+    }
+  ]
+}

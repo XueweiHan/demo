@@ -1,17 +1,18 @@
 
 targetScope = 'subscription'
 
-param azureMonitorWorkspaceResourceId string
-param azureMonitorWorkspaceLocation string
-param enableWindowsRecordingRules bool = false
 
+param azureMonitorWorkspaceResourceId string
+param enableWindowsRecordingRules bool = false
 param policyDefinitionId string
-param policyAssignmentName string = split(policyDefinitionId, '/')[6]
+param location string = 'westus'
+
+var policyAssignmentName = split(policyDefinitionId, '/')[6]
 
 resource policy_assignment_resource 'Microsoft.Authorization/policyAssignments@2023-04-01' = {
   name: policyAssignmentName
   scope: subscription()
-  location: azureMonitorWorkspaceLocation
+  location: location
   identity: {
     type: 'SystemAssigned'
   }
@@ -22,15 +23,13 @@ resource policy_assignment_resource 'Microsoft.Authorization/policyAssignments@2
       azureMonitorWorkspaceResourceId: {
         value: azureMonitorWorkspaceResourceId
       }
-      azureMonitorWorkspaceLocation: {
-        value: azureMonitorWorkspaceLocation
-      }
       enableWindowsRecordingRules :{
         value: enableWindowsRecordingRules
       }
     }
   }
 }
+
 
 var ContributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 resource contributor_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {

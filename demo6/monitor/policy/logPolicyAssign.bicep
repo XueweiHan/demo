@@ -2,15 +2,15 @@
 targetScope = 'subscription'
 
 param logAnalyticsWorkspaceResourceId string
-param logAnalyticsWorkspaceLocation string
-
 param policyDefinitionId string
-param policyAssignmentName string = split(policyDefinitionId, '/')[6]
+param location string = 'westus'
+
+var policyAssignmentName = split(policyDefinitionId, '/')[6]
 
 resource policy_assignment_resource 'Microsoft.Authorization/policyAssignments@2023-04-01' = {
   name: policyAssignmentName
   scope: subscription()
-  location: logAnalyticsWorkspaceLocation
+  location: location
   identity: {
     type: 'SystemAssigned'
   }
@@ -20,9 +20,6 @@ resource policy_assignment_resource 'Microsoft.Authorization/policyAssignments@2
     parameters: {
       logAnalyticsWorkspaceResourceId: {
         value: logAnalyticsWorkspaceResourceId
-      }
-      logAnalyticsWorkspaceLocation: {
-        value: logAnalyticsWorkspaceLocation
       }
     }
   }

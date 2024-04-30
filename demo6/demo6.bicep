@@ -22,7 +22,7 @@ param aks_dns_prefix string = toLower('${project_name}-${environment}-dns-prefix
 param aks_node_resource_group string = toLower('${project_name}-${environment}-aks-infra-rg')
 param aks_service_account_name string = toLower('${project_name}-sa')
 param keyvault_name string = toLower('${project_name}-${environment}-keyvault')
-param attestation_provider_name string = toLower('${project_name}${environment}Attest') 
+param attestation_provider_name string = toLower('${project_name}${environment}Attest')
 
 resource keyvault_resource 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyvault_name

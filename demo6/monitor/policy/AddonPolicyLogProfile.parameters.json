@@ -5,12 +5,5 @@
     "displayName": "Azure Log Analytics Workspace Resource Id",
       "description": "Resource Id of the existing Azure Log Analytics Workspace"
     }
-  },
-  "logAnalyticsWorkspaceLocation": {
-    "type": "string",
-    "metadata": {
-    "displayName": "Azure Log Analytics Workspace Location",
-      "description": "Location of the existing Azure Log Analytics Workspace"
-    }
   }
 }

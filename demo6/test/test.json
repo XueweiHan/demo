@@ -1,0 +1,76 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "logAnalyticsWorkspaceResourceId": {
+            "defaultValue": "/subscriptions/b47beaaf-7461-4b34-844a-7105d6b8c0d7/resourcegroups/aks-visibility-rg/providers/microsoft.operationalinsights/workspaces/aks-log-analytics-workspace",
+            "type": "String"
+        }
+    },
+    "variables": {
+        "aks_name": "AKS-Cluster",
+        "log_analytics_workspace_resource_id": "[parameters('logAnalyticsWorkspaceResourceId')]",
+        "get_ws_deploy_name": "[take(concat('Get-Log-Workspace-', variables('aks_name')), 64)]",
+        "resource_deploy_name": "[take(concat('Create-Resources-', variables('aks_name')), 64)]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2023-07-01",
+            "name": "[variables('get_ws_deploy_name')]",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [],
+                    "outputs": {
+                        "ws_location": {
+                            "type": "string",
+                            "value": "[reference(variables('log_analytics_workspace_resource_id'), '2023-09-01', 'Full').location]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2023-07-01",
+            "name": "[variables('resource_deploy_name')]",
+            "properties": {
+                "mode": "Incremental",
+                "expressionEvaluationOptions": {
+                    "scope": "inner"
+                },
+                "parameters": {
+                    "ws_location": {
+                        "value": "[reference(variables('get_ws_deploy_name')).outputs.ws_location.value]"
+                    },
+                    "ws_name": {
+                        "value": "[variables('aks_name')]"
+                    }
+                },
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "ws_location": {
+                            "type": "string"
+                        },
+                        "ws_name": {
+                            "type": "string"
+                        }
+                    },
+                    "resources": [
+                        {
+                            "type": "Microsoft.OperationalInsights/workspaces",
+                            "apiVersion": "2023-09-01",
+                            "name": "[format('{0}-{1}', parameters('ws_name'), parameters('ws_location'))]",
+                            "location": "[parameters('ws_location')]"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

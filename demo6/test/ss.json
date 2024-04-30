@@ -1,0 +1,9 @@
+"azSecPackIdentityPrincipalId": {
+  "type": "string",
+  "value": "[reference(resourceId('AzSecPackAutoConfigRG', 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('identity_name')), '2023-01-31').principalId]"
+},
+"azSecPackIdentityClientId": {
+  "type": "string",
+  "value": "[reference(resourceId('AzSecPackAutoConfigRG', 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('identity_name')), '2023-01-31').clientId]"
+}
+

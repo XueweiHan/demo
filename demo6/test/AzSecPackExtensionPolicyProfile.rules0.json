@@ -1,0 +1,200 @@
+{
+	"if": {
+		"field": "type",
+		"equals": "Microsoft.Compute/virtualMachineScaleSets"
+	},
+	"then": {
+		"effect": "deployIfNotExists",
+		"details": {
+			"type": "Microsoft.Compute/virtualMachineScaleSets",
+			"name": "[field('name')]",
+			"roleDefinitionIds": [
+				"/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+			],
+			"existenceCondition": {
+        "count": {
+          "field": "Microsoft.Compute/virtualMachineScaleSets/virtualMachineProfile.extensionProfile.extensions[*]",
+          "where": {
+            "field": "Microsoft.Compute/virtualMachineScaleSets/virtualMachineProfile.extensionProfile.extensions[*].name",
+            "equals": "AzureSecurityLinuxAgent"
+          }
+        },
+				"equals": "1"
+			},
+			"deployment": {
+				"properties": {
+					"mode": "incremental",
+					"parameters": {
+						"vmssResourceId": {
+							"value": "[field('id')]"
+						},
+						"vmssLocation": {
+							"value": "[field('location')]"
+						}
+					},
+					"template": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+              "vmssResourceId": {
+								"type": "string"
+              },
+              "vmssLocation": {
+								"type": "string"
+              }
+            },
+            "variables": {
+              "vmss_name": "[split(parameters('vmssResourceId'),'/')[8]]",
+              "identity_name": "[format('AzSecPackAutoConfigUA-{0}', parameters('vmssLocation'))]",
+              "identity_id": "[resourceId('AzSecPackAutoConfigRG', 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('identity_name'))]",
+              "get_iden_deploy_name": "[take(concat('Get-AzSecPack-Identity-', variables('vmss_name')), 64)]",
+              "resource_deploy_name": "[take(concat('Create-AsSecPack-Resources-', variables('vmss_name')), 64)]"
+            },
+            "resources": [
+              {
+                "type": "Microsoft.Resources/deployments",
+                "apiVersion": "2023-07-01",
+                "name": "[variables('get_iden_deploy_name')]",
+                "properties": {
+                  "mode": "Incremental",
+                  "template": {
+                    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": [],
+                    "outputs": {
+                      "azSecPackIdentityPrincipalId": {
+                        "type": "string",
+                        "value": "[reference(variables('identity_id'), '2023-01-31').principalId]"
+                      },
+                      "azSecPackIdentityClientId": {
+                        "type": "string",
+                        "value": "[reference(variables('identity_id'), '2023-01-31').clientId]"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Microsoft.Resources/deployments",
+                "apiVersion": "2023-07-01",
+                "name": "[variables('resource_deploy_name')]",
+                "properties": {
+                  "mode": "Incremental",
+                  "expressionEvaluationOptions": {
+                    "scope": "inner"
+                  },
+                  "parameters": {
+                    "identity_principal_id": {
+                      "value": "[reference(variables('get_iden_deploy_name')).outputs.azSecPackIdentityPrincipalId.value]"
+                    },
+                    "identity_client_id": {
+                      "value": "[reference(variables('get_iden_deploy_name')).outputs.azSecPackIdentityClientId.value]"
+                    },
+                    "vmssResourceId": {
+                      "value": "[parameters('vmssResourceId')]"
+                    },
+                    "vmssLocation": {
+                      "value": "[parameters('vmssLocation')]"
+                    }
+                  },
+                  "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                      "identity_principal_id": {
+                        "type": "string"
+                      },
+                      "identity_client_id": {
+                        "type": "string"
+                      },
+                      "vmssResourceId": {
+                        "type": "string"
+                      },
+                      "vmssLocation": {
+                        "type": "string"
+                      }
+                    },
+                    "variables": {
+                      "vmss_name": "[split(parameters('vmssResourceId'),'/')[8]]",
+                      "location": "[parameters('vmssLocation')]",
+                      "identity_name": "[format('AzSecPackAutoConfigUA-{0}', parameters('vmssLocation'))]",
+                    },
+                    "resources": [
+                      {
+                        "type": "Microsoft.Compute/virtualMachineScaleSets",
+                        "apiVersion": "2024-03-01",
+                        "name": "[variables('vmss_name')]",
+                        "location": "[variables('location')]",
+                        "identity": {
+                          "type": "UserAssigned",
+                          "userAssignedIdentities": {
+                            "[resourceId('AzSecPackAutoConfigRG', 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('identity_name'))]": {}
+                          }
+                        }
+                      },
+                      {
+                        "name": "[concat(variables('vmss_name'), '/AzureMonitorLinuxAgent')]",
+                        "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
+                        "location": "[variables('location')]",
+                        "apiVersion": "2021-11-01",
+                        "properties": {
+                          "publisher": "Microsoft.Azure.Monitor",
+                          "type": "AzureMonitorLinuxAgent",
+                          "typeHandlerVersion": "1.0",
+                          "autoUpgradeMinorVersion": true,
+                          "enableAutomaticUpgrade": false,
+                          "settings": {
+                            "genevaConfiguration": {
+                              "enable": true
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "name": "[concat(variables('vmss_name'), '/M365.Azsecpack.CommonNamespaceConfigure')]",
+                        "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
+                        "location": "[variables('location')]",
+                        "dependsOn": [
+                          "[concat('Microsoft.Compute/virtualMachineScaleSets/', variables('vmss_name'), '/extensions/AzureMonitorLinuxAgent')]"
+                        ],
+                        "apiVersion": "2021-11-01",
+                        "properties": {
+                          "publisher": "Microsoft.Dcsswe.Extensions",
+                          "type": "M365.Azsecpack.CommonNamespaceConfigure",
+                          "typeHandlerVersion": "1.1",
+                          "autoUpgradeMinorVersion": true,
+                          "settings": {}
+                        }
+                      },
+                      {
+                        "name": "[concat(variables('vmss_name'), '/AzureSecurityLinuxAgent')]",
+                        "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
+                        "location": "[variables('location')]",
+                        "apiVersion": "2021-11-01",
+                        "dependsOn": [
+                          "[concat('Microsoft.Compute/virtualMachineScaleSets/', variables('vmss_name'), '/extensions/AzureMonitorLinuxAgent')]",
+                          "[concat('Microsoft.Compute/virtualMachineScaleSets/', variables('vmss_name'), '/extensions/M365.Azsecpack.CommonNamespaceConfigure')]"
+                        ],
+                        "properties": {
+                          "publisher": "Microsoft.Azure.Security.Monitoring",
+                          "type": "AzureSecurityLinuxAgent",
+                          "typeHandlerVersion": "2.0",
+                          "autoUpgradeMinorVersion": true,
+                          "enableAutomaticUpgrade": true,
+                          "settings": {
+                            "enableGenevaUpload": true,
+                            "amaSocketBasePath": "/var/run/azuremonitoragent/m365torus"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+				}
+			}
+		}
+	}
+}

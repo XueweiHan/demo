@@ -5,7 +5,7 @@ az account set --subscription b47beaaf-7461-4b34-844a-7105d6b8c0d7
 az configure --defaults location=eastus
 
 az group create -g hunter-demo6-rg
-az deployment group create -g hunter-demo6-rg --template-file demo6.bicep
+az deployment group create -g hunter-demo6-rg --template-file demo6.bicep --parameters '{"environment":{"value":"demo6"}}'
 az identity show -g hunter-demo6-rg -n hunter-demo6-identity --query 'clientId' -o tsv
 update the workload identity id in demo6.yaml file
 ```

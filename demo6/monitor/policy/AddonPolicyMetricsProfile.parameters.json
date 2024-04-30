@@ -6,13 +6,6 @@
         "description": "Resource Id of the existing Azure Monitor Workspace"
       }
     },
-    "azureMonitorWorkspaceLocation": {
-      "type": "string",
-      "metadata": {
-      "displayName": "Azure Monitor Workspace Location",
-        "description": "Location of the existing Azure Monitor Workspace"
-      }
-    },
     "metricLabelsAllowlist": {
       "type": "string",
       "defaultValue": "",
