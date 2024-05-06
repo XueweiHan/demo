@@ -5,9 +5,13 @@ WORKDIR /src
 COPY . .
 RUN mv nuget/NuGet.config NuGet.config
 RUN dotnet add package Newtonsoft.Json --version 13.0.3
-RUN dotnet add package Azure.Messaging.EventGrid --version 4.23.0
+RUN dotnet add package prometheus-net --version 8.2.1
+
+# testing the packages
 RUN dotnet add package Microsoft.AzureAd.Icm.Types --version 3.0.2628.37
 RUN dotnet add package Microsoft.AzureAd.Icm.WebService.Client --version 3.0.2628.37
+RUN dotnet add package Azure.Messaging.EventGrid --version 4.23.0
+
 
 RUN dotnet build IcmProxy.csproj --configuration Release
 
@@ -21,8 +25,11 @@ WORKDIR /app
 COPY --from=build-env /src/bin/Release/net6.0/ ./
 
 ARG TAG=0.0.0
+ARG PORT=8082
+
 ENV TAG=$TAG
-ENV ROOT_URL=*:8082
-EXPOSE 8001
+ENV ROOT_URL=*:$PORT
+EXPOSE $PORT
+EXPOSE 4000
 
 CMD [ "dotnet", "IcmProxy.dll" ]

@@ -157,12 +157,12 @@
 											"dce_name": "[format('{0}-metrics-dce', variables('aks_name'))]",
 											"dcr_name": "[format('{0}-metrics-dcr', variables('aks_name'))]",
 											"dcra_name": "[format('{0}-metrics-dcra', variables('aks_name'))]",
-											"nrrg_name": "[format('{0}-metrics-node-rrg', variables('aks_name'))]",
+											"nprg_name": "[format('{0}-metrics-node-prg', variables('aks_name'))]",
 											"nrrg_des": "Node Recording Rules RuleGroup",
-											"krrg_name": "[format('{0}-metrics-k8s-rrg', variables('aks_name'))]",
+											"kprg_name": "[format('{0}-metrics-k8s-prg', variables('aks_name'))]",
 											"krrg_des": "Kubernetes Recording Rules RuleGroup",
-											"nrrg_w_name": "[format('{0}-metrics-w-node-rrg', variables('aks_name'))]",
-											"nkrrg_w_name": "[format('{0}-metrics-w-node-k8s-rrg', variables('aks_name'))]",
+											"nprg_w_name": "[format('{0}-metrics-w-node-prg', variables('aks_name'))]",
+											"nkprg_w_name": "[format('{0}-metrics-w-node-k8s-prg', variables('aks_name'))]",
 											"nkrrg_w_des": "Kubernetes Recording Rules RuleGroup for Win",
 											"version": " - 0.1"
 										},
@@ -248,14 +248,14 @@
 												},
 												"dependsOn": [
 													"[extensionResourceId(resourceId('Microsoft.ContainerService/managedClusters', variables('aks_name')), 'Microsoft.Insights/dataCollectionRuleAssociations', variables('dcra_name'))]",
-													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('nrrg_name'))]",
-													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('krrg_name'))]",
-													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('nrrg_w_name'))]",
-													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('nkrrg_w_name'))]"
+													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('nprg_name'))]",
+													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('kprg_name'))]",
+													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('nprg_w_name'))]",
+													"[resourceId('Microsoft.AlertsManagement/prometheusRuleGroups', variables('nkprg_w_name'))]"
 												]
 											},
 											{
-												"name": "[variables('nrrg_name')]",
+												"name": "[variables('nprg_name')]",
 												"type": "Microsoft.AlertsManagement/prometheusRuleGroups",
 												"apiVersion": "2023-03-01",
 												"location": "[variables('ws_location')]",
@@ -315,7 +315,7 @@
 												}
 											},
 											{
-												"name": "[variables('krrg_name')]",
+												"name": "[variables('kprg_name')]",
 												"type": "Microsoft.AlertsManagement/prometheusRuleGroups",
 												"apiVersion": "2023-03-01",
 												"location": "[variables('ws_location')]",
@@ -419,7 +419,7 @@
 												}
 											},
 											{
-												"name": "[variables('nrrg_w_name')]",
+												"name": "[variables('nprg_w_name')]",
 												"type": "Microsoft.AlertsManagement/prometheusRuleGroups",
 												"apiVersion": "2023-03-01",
 												"location": "[variables('ws_location')]",
@@ -496,7 +496,7 @@
 												}
 											},
 											{
-												"name": "[variables('nkrrg_w_name')]",
+												"name": "[variables('nkprg_w_name')]",
 												"type": "Microsoft.AlertsManagement/prometheusRuleGroups",
 												"apiVersion": "2023-03-01",
 												"location": "[variables('ws_location')]",

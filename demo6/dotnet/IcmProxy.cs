@@ -21,7 +21,19 @@ listener.Start();
 
 listener.BeginGetContext(ListenerCallback, listener);
 
+Console.WriteLine($"Open http://{root}/ in a web browser.");
+
+//*
+// Enable Prometheus Metrics Server
+var server = new Prometheus.MetricServer(port: 4000);
+server.Start();
+Console.WriteLine("Open http://localhost:4000/metrics in a web browser.");
+//*/
+
+Console.WriteLine("Press Ctrl-C to exit.");
 Thread.Sleep(int.MaxValue);
+
+
 
 void ListenerCallback(IAsyncResult result)
 {
@@ -70,7 +82,14 @@ void DefaultHandler(HttpListenerRequest request, HttpListenerResponse response)
         using var body = request.InputStream;
         using var reader = new StreamReader(body, encoding);
         using var jsonReader = new JsonTextReader(reader);
-        payload.body = JObject.ReadFrom(jsonReader);
+        payload.body = reader.ReadToEnd();
+        try
+        {
+            payload.body = JObject.Parse((string)payload.body);
+        }
+        catch (JsonReaderException)
+        {
+        }
     }
 
     var json = payload.ToString(Formatting.None);

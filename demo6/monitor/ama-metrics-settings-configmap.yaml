@@ -9,7 +9,7 @@ data:
     ver1
   # ! cluster alias in metrics
   prometheus-collector-settings: |-
-    cluster_alias = "hunter-demo6"
+    cluster_alias = ""
   default-scrape-settings-enabled: |-
     kubelet = true
     coredns = false

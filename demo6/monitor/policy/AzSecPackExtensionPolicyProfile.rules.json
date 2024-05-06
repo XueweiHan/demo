@@ -68,10 +68,13 @@
                 }
               },
               {
-                "name": "[concat(variables('vmss_name'), '/AzureMonitorLinuxAgent')]",
                 "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
-                "location": "[variables('location')]",
                 "apiVersion": "2021-11-01",
+                "name": "[concat(variables('vmss_name'), '/AzureMonitorLinuxAgent')]",
+                "location": "[variables('location')]",
+                "dependsOn": [
+                  "[concat('Microsoft.Compute/virtualMachineScaleSets/', variables('vmss_name'))]"
+                ],
                 "properties": {
                   "publisher": "Microsoft.Azure.Monitor",
                   "type": "AzureMonitorLinuxAgent",
@@ -86,13 +89,13 @@
                 }
               },
               {
-                "name": "[concat(variables('vmss_name'), '/M365.Azsecpack.CommonNamespaceConfigure')]",
                 "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
+                "apiVersion": "2021-11-01",
+                "name": "[concat(variables('vmss_name'), '/M365.Azsecpack.CommonNamespaceConfigure')]",
                 "location": "[variables('location')]",
                 "dependsOn": [
                   "[concat('Microsoft.Compute/virtualMachineScaleSets/', variables('vmss_name'), '/extensions/AzureMonitorLinuxAgent')]"
                 ],
-                "apiVersion": "2021-11-01",
                 "properties": {
                   "publisher": "Microsoft.Dcsswe.Extensions",
                   "type": "M365.Azsecpack.CommonNamespaceConfigure",
@@ -102,10 +105,10 @@
                 }
               },
               {
-                "name": "[concat(variables('vmss_name'), '/AzureSecurityLinuxAgent')]",
                 "type": "Microsoft.Compute/virtualMachineScaleSets/extensions",
-                "location": "[variables('location')]",
                 "apiVersion": "2021-11-01",
+                "name": "[concat(variables('vmss_name'), '/AzureSecurityLinuxAgent')]",
+                "location": "[variables('location')]",
                 "dependsOn": [
                   "[concat('Microsoft.Compute/virtualMachineScaleSets/', variables('vmss_name'), '/extensions/AzureMonitorLinuxAgent')]",
                   "[concat('Microsoft.Compute/virtualMachineScaleSets/', variables('vmss_name'), '/extensions/M365.Azsecpack.CommonNamespaceConfigure')]"
