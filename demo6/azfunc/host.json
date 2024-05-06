@@ -14,7 +14,7 @@
   },
   "customHandler": {
     "description": {
-      "defaultExecutablePath": "func-app",
+      "defaultExecutablePath": "azfunc",
       "workingDirectory": "",
       "arguments": []
     },

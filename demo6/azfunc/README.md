@@ -13,37 +13,32 @@ az deployment group create -g hunter-demo6-rg --template-file azfunc.bicep
 # Local func run
 ```
 
-az role assignment create --role "Storage Account Contributor" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
+az role assignment create --role "Storage Account Contributor" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv) --assignee-principal-type User
 
-az role assignment create --role "Storage Blob Data Owner" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
+az role assignment create --role "Storage Blob Data Owner" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv) --assignee-principal-type User
 
-az role assignment create --role "Storage Queue Data Contributor" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
+az role assignment create --role "Storage Queue Data Contributor" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv) --assignee-principal-type User
 
 go build .
 
 func start
 
-if you are running in local box not in dev container, you can test url: http://localhost/api/hello
+curl localhost:7071/api/hello
+
 ```
 # Local container run
 ```
 docker build -t xueweihan/demo6-func:0.1 .
-docker run --rm -it -p 8083:80 xueweihan/demo6-func:0.1
+docker build -t demo6-func:debug -f Dockerfile_local .
+docker run --rm -it -p 8083:80 demo6-func:debug
 device login...
 test url: http://localhost:8083/api/hello
 ```
-# deploy to azure function app
+# deploy to aks
 ```
 docker login
 docker push xueweihan/demo6-func:0.1
 
-?? restart func app with c
-
-?? test url: https://demo3-fa1.azurewebsites.net/api/hello
-
-```
-# deploy to aks
-```
 az aks get-credentials -n hunter-demo6-aks -g hunter-demo6-rg
 
 kubectl apply -f azfunc.yaml

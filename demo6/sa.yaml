@@ -4,7 +4,7 @@ kind: ServiceAccount
 metadata:
   name: hunter-sa
   annotations:
-    azure.workload.identity/client-id: 0a62027c-a627-441a-b1f3-4761819b6fc9
+    azure.workload.identity/client-id: 9a543785-608b-47a0-adbb-fefaf2e66030
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

@@ -11,8 +11,8 @@ param keyvault_sku string = 'Premium'
 
 param aks_vmsize string = (aks_tier == 'Free') ? 'Standard_B2pls_v2' : 'Standard_DC4as_cc_v5'
 param aks_availability_zones array = ['1', '2', '3']
-param aks_system_node_count int = 1
-param aks_user_node_count int = 1
+param aks_system_node_count int = 2
+param aks_user_node_count int = 2
 
 param location string = resourceGroup().location
 param identity_name string = toLower('${project_name}-${environment}-identity')

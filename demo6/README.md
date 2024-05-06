@@ -3,32 +3,35 @@
 az login
 az account set --subscription b47beaaf-7461-4b34-844a-7105d6b8c0d7
 az configure --defaults location=eastus
+export name=demo6
 
-az group create -g hunter-demo6-rg
-az deployment group create -g hunter-demo6-rg --template-file demo6.bicep --parameters '{"environment":{"value":"demo6"}}'
-az identity show -g hunter-demo6-rg -n hunter-demo6-identity --query 'clientId' -o tsv
-update the workload identity id in demo6.yaml file
+az group create -g hunter-$name-rg
+az deployment group create -g hunter-$name-rg --template-file demo6.bicep --parameters '{"environment":{"value":"$name"}}'
+az identity show -g hunter-$name-rg -n hunter-$name-identity --query 'clientId' -o tsv
+update the workload identity id in sa.yaml file
+
+az aks get-credentials -n hunter-$name-aks -g hunter-$name-rg
+kubectl apply -f sa.yaml
 ```
 
 
 # docker build 
 ```
-docker build -t xueweihan/demo6:0.1 .
-docker run --rm -p 8081:8081 xueweihan/demo6:0.1
+docker build -t xueweihan/${name}:0.1 .
+docker run --rm -p 8081:8081 xueweihan/${name}:0.1
 test http://localhost:8081/https/www.google.com/search?q=hello in browser
 docker login
-docker push xueweihan/demo6:0.1
+docker push xueweihan/${name}:0.1
 ```
 
 
 # confcom
 ```
 az confcom katapolicygen -y demo6.yaml --print-policy | base64 -d | sha256sum | cut -d' ' -f1
-az attestation show -n hunterdemo6attest -g hunter-demo6-rg --query attestUri -o tsv
+az attestation show -n hunter${name}attest -g hunter-$name-rg --query attestUri -o tsv
 https://hunterdemo6attest.eus.attest.azure.net
 update the key-release-policy.json
 
-az aks get-credentials -n hunter-demo6-aks -g hunter-demo6-rg
 kubectl apply -f demo6.yaml
 ```
 
@@ -55,35 +58,34 @@ kubectl describe secret letsencrypt-key
 
 # test key vault
 ```
-az role assignment create --role "Key Vault Secrets Officer" --scope $(az keyvault show -n hunter-demo6-keyvault --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
-az keyvault secret set --vault-name hunter-demo6-keyvault -n test1 --value "hello world!"
+az role assignment create --role "Key Vault Secrets Officer" --scope $(az keyvault show -n hunter-$name-keyvault --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
+az keyvault secret set --vault-name hunter-$name-keyvault -n test1 --value "hello world!"
 
 test:
 https://demo6.ajzxhub.net/demo6-2?vault=hunter-demo6-keyvault&secret=test1
 https://demo6.ajzxhub.net/demo6-1?vault=hunter-demo6-keyvault&secret=test1
 https://demo6.ajzxhub.net/pods
 https://demo6.ajzxhub.net/https/www.google.com/search?q=hello
-http://4.157.235.68/helloworld?vault=hunter-demo6-keyvault&secret=test1
-http://4.157.235.68/pods
-http://4.157.235.68/https/www.google.com/search?q=hello
 
 
-az role assignment create --role "Key Vault Crypto Officer" --scope $(az keyvault show -n hunter-demo6-keyvault --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
-az keyvault key create -n key1 --vault-name hunter-demo6-keyvault --ops wrapKey unwrapkey encrypt decrypt --kty RSA-HSM --size 3072 --exportable --policy key-release-policy.json
 
-az keyvault key download -n key1 --vault-name hunter-demo6-keyvault -f pub.pem
+az role assignment create --role "Key Vault Crypto Officer" --scope $(az keyvault show -n hunter-$name-keyvault --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv)
+
+az keyvault key create -n key1 --vault-name hunter-$name-keyvault --ops wrapKey unwrapkey encrypt decrypt --kty RSA-HSM --size 3072 --exportable --policy key-release-policy.json
+
+az keyvault key download -n key1 --vault-name hunter-$name-keyvault -f pub.pem
 
 go run encode/encode.go pub.pem "Top secret!"
 
 test:
-https://demo6.ajzxhub.net/demo6-2?vault=hunter-demo6-keyvault&attest=hunterdemo6attest.eus&key=key1&message=
+https://demo6.ajzxhub.net/demo6?vault=hunter-demo6-keyvault&attest=hunterdemo6attest.eus&key=key1&message=
 
 ```
 
 
 
 
-# ---------------------------------------
+# ---------------------------------------------------------------------------------------------
 # self-signed tls for testing
 
 # https 1 (self-signed tls cert)

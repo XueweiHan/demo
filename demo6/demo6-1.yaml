@@ -34,7 +34,7 @@ kind: Service
 metadata:
   name: demo6-1-srv
 spec:
-  type: LoadBalancer
+  # type: LoadBalancer
   selector:
     app: demo6-1
   ports:

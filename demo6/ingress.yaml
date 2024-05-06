@@ -62,6 +62,13 @@ spec:
             name: azfunc-srv
             port:
               number: 80
+      - path: /dotnet
+        pathType: Prefix
+        backend:
+          service:
+            name: dotnet-srv
+            port:
+              number: 80
   - host: test.ajzxhub.net
     http:
       paths:

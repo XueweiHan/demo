@@ -23,13 +23,17 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 80
-        # env:
-        # - name: AzureFunctionsJobHost__functions__0
-        #   value: queue1
-        # - name: AzureFunctionsJobHost__functions__1
-        #   value: timer1
-        # - name: AzureFunctionsJobHost__functions__2
-        #   value: hello
+        env:
+        - name: AzureWebJobsStorage__credential
+          value: workloadidentity
+        - name: AzureWebJobsStorage__accountName
+          value: hunterdemo6sa
+        - name: AzureFunctionsJobHost__functions__0
+          value: queue1
+        - name: AzureFunctionsJobHost__functions__1
+          value: timer1
+        - name: AzureFunctionsJobHost__functions__2
+          value: hello
         readinessProbe:
           failureThreshold: 3
           periodSeconds: 10
