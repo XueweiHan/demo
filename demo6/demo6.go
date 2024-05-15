@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/XueweiHan/demo/demo6/azure"
@@ -93,12 +94,47 @@ func main() {
 	// test kubenettes api call
 	http.Handle("/pods", makeInstrumentedHandler(listPodsHandler, "listPods"))
 
+	http.Handle("/favicon.ico", http.NotFoundHandler())
+
+	http.Handle("/workload", makeInstrumentedHandler(workloadHandler, "workload"))
+
 	// prometheus metrics
 	http.Handle("/metrics", promhttp.Handler())
 
 	go testOps()
 
 	http.ListenAndServe(":"+port, nil)
+}
+
+func workloadHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
+	load := r.URL.Query().Get("load")
+	n, err := strconv.Atoi(load)
+	if err != nil {
+		n = 300
+	}
+
+	resultCh := make(chan int)
+	timeout := false
+	go func() {
+		r := 0
+		for !timeout {
+			r += rand.Intn(100)
+		}
+		resultCh <- r
+	}()
+	time.Sleep(time.Duration(n) * time.Millisecond)
+	timeout = true
+	result := <-resultCh
+
+	duration := time.Since(start)
+
+	if rand.Intn(100) < 5 {
+		http.Error(w, "Simulate 5% of fake Server Error\n", http.StatusInternalServerError)
+	}
+
+	fmt.Fprintf(w, "execution time: %s\nresult: %d\n", duration, result)
 }
 
 func makeInstrumentedHandler(handler http.HandlerFunc, handlerLabel string) http.Handler {
@@ -116,10 +152,6 @@ func makeInstrumentedHandler(handler http.HandlerFunc, handlerLabel string) http
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/favicon.ico" {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return
-	}
 
 	log.Printf("%s %s", r.Method, r.URL.Path)
 	fmt.Fprintf(w, "%v %v\n%v %v\n\n", r.Method, r.URL, runtime.GOOS, runtime.GOARCH)

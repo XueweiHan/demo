@@ -63,3 +63,14 @@ resource storage_queue_data_contributor_role_assignment 'Microsoft.Authorization
     principalType: 'ServicePrincipal'
   }
 }
+
+var StorageTableDataContributorRoleId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+resource storage_table_data_contributor_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage_account_resource.id, 'Storage Table Data Contributor', identity_resource.id)
+  scope: storage_account_resource
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', StorageTableDataContributorRoleId)
+    principalId: identity_resource.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}

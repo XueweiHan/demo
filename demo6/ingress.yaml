@@ -76,6 +76,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: dotnet-srv
+            name: demo6-1-srv
             port:
               number: 80

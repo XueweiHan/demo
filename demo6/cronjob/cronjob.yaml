@@ -1,0 +1,60 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: time-trigger-job1
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: "Forbid"
+  jobTemplate:
+    spec:
+      parallelism: 2
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: hunter-sa
+          restartPolicy: OnFailure
+          containers:
+          - name: time-trigger-job1
+            image: xueweihan/demo6-cronjob:0.1
+            imagePullPolicy: Always
+            env:
+            - name: JOB_NAME
+              value: job1
+            - name: WORKLOAD_URL
+              value: http://demo6-1-srv.default.svc.cluster.local/workload?load=
+            - name: WORK_COUNT
+              value: "50"
+            - name: TABLES_STORAGE_ACCOUNT_NAME
+              value: hunterdemo6sa
+            - name: PUSHGATEWAY_ENDPOINT
+              value: http://pushgateway.default.svc.cluster.local:9091
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: time-trigger-job2
+spec:
+  schedule: "*/2 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            azure.workload.identity/use: "true"
+        spec:
+          serviceAccountName: hunter-sa
+          restartPolicy: OnFailure
+          containers:
+          - name: time-trigger-job2
+            image: xueweihan/demo6-cronjob:0.1
+            imagePullPolicy: Always
+            env:
+            - name: JOB_NAME
+              value: job2
+            - name: TABLES_STORAGE_ACCOUNT_NAME
+              value: hunterdemo6sa
+            - name: PUSHGATEWAY_ENDPOINT
+              value: http://pushgateway.default.svc.cluster.local:9091

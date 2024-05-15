@@ -1,0 +1,38 @@
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pushgateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pushgateway
+  template:
+    metadata:
+      labels:
+        app: pushgateway
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      containers:
+      - name: pushgateway
+        image: prom/pushgateway
+        ports:
+        - name: web
+          containerPort: 9091
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pushgateway
+spec:
+  selector:
+    app: pushgateway
+  ports:
+  - name: scrape
+    protocol: TCP
+    port: 9091
+    targetPort: 9091
+        

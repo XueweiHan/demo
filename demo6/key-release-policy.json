@@ -13,7 +13,7 @@
                 },
                 {
                     "claim": "x-ms-sevsnpvm-hostdata",
-                    "equals": "15c1a5252e31c8b439fc5a3af28b6e4a35317e58ed5e4a07a2467a675392562a"
+                    "equals": "74263b9ed3ac2dc50bb65501190f18b468d55352bcc8e7f78353cf263ab69a41"
                 },
                 {
                     "claim": "x-ms-sevsnpvm-is-debuggable",
