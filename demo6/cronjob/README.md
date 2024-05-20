@@ -60,3 +60,7 @@ kubectl logs job.batch/time-trigger-job2-28576876
 # assign role to storage account
 
 az role assignment create --role "Storage Table Data Contributor" --scope $(az storage account show -n hunterdemo6sa --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv) --assignee-principal-type User
+
+
+# confcom
+az confcom katapolicygen -y demo6.yaml --print-policy | base64 -d | sha256sum | cut -d' ' -f1

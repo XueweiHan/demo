@@ -1,0 +1,67 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azfunc-1-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azfunc-1
+  template:
+    metadata:
+      labels:
+        app: azfunc-1
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: hunter-sa
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: azfunc-1
+          image: "xueweihan/demo6-func:0.1"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          env:
+            - name: AzureWebJobsStorage__credential
+              value: workloadidentity
+            - name: AzureWebJobsStorage__accountName
+              value: hunterdemo6sa
+            - name: AzureFunctionsJobHost__functions__0
+              value: queue1
+            - name: AzureFunctionsJobHost__functions__1
+              value: timer1
+            - name: AzureFunctionsJobHost__functions__2
+              value: hello
+          readinessProbe:
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 240
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+          startupProbe:
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 240
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: azfunc-1-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: azfunc-1
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
