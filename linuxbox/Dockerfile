@@ -1,4 +1,5 @@
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-22.04
+# FROM mcr.microsoft.com/devcontainers/base:ubuntu-22.04
+FROM ubuntu:22.04
 
 RUN apt update &&\
     apt install ca-certificates curl git gpg libicu70 lsb-release dnsutils make -y

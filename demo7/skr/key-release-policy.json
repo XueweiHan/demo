@@ -1,0 +1,26 @@
+{
+    "anyOf": [
+        {
+            "authority": "https://hunterdemo7attest.eus.attest.azure.net",
+            "allOf": [
+                {
+                    "claim": "x-ms-compliance-status",
+                    "equals": "azure-compliant-uvm"
+                },
+                {
+                    "claim": "x-ms-attestation-type",
+                    "equals": "sevsnpvm"
+                },
+                {
+                    "claim": "x-ms-sevsnpvm-hostdata",
+                    "equals": "01d73dd170e4ca525fba0075142860a6c1abcc18e5848a4809c9b4d79336c95c"
+                },
+                {
+                    "claim": "x-ms-sevsnpvm-is-debuggable",
+                    "equals": "false"
+                }
+            ]
+        }
+    ],
+    "version": "1.0.0"
+}

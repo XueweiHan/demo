@@ -1,0 +1,4 @@
+github.com/XueweiHan/demo/demo6 v0.0.0-20240521174644-c480bf480c62 h1:cNOtnaWYLBdAjC2pWEG3ecHXuBBcihtpzQwM0y5y+yQ=
+github.com/XueweiHan/demo/demo6 v0.0.0-20240521174644-c480bf480c62/go.mod h1:kepmXNmcB0EFxS6XqofOWKJ0p/Shmh9Qif/N0W3pNOA=
+github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
+github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=

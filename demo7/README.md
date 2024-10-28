@@ -1,42 +1,138 @@
-# nginx for AKS
+# xpme azure portal login
+PIM -> Manage -> Azure resource -> Subscriptions -> select -> Manage resource -> Activate -> Activate
+
 ```
+docker start linuxbox
+docker exec -it linuxbox /bin/bash
 az login
-az account set --subscription b47beaaf-7461-4b34-844a-7105d6b8c0d7
+az account set -s cd8a92db-a0c2-4273-816c-5149a1a1c5c9
 az configure --defaults location=eastus
-export name=demo6
+export name=hunter-demo7
 
-az group create -g hunter-$name-rg
-az deployment group create -g hunter-$name-rg --template-file demo6.bicep --parameters '{"environment":{"value":"$name"}}'
-az identity show -g hunter-$name-rg -n hunter-$name-identity --query 'clientId' -o tsv
-update the workload identity id in sa.yaml file
+az group create -g $name-rg
 
-az aks get-credentials -n hunter-$name-aks -g hunter-$name-rg
+az deployment group create -g $name-rg --template-file demo7.bicep --parameters "{\"project_name\":{\"value\":\"$name\"}}"
+```
 
-# kubelogin by default will use the kubeconfig from ${KUBECONFIG}. Specify --kubeconfig to override
-# this converts to use azurecli login mode
+# assign roles to aks agentpool
+```
+# assign acr pull role
+
+az aks update -n $name-aks -g $name-rg --attach-acr ${name/-/}cr
+or
+az role assignment create --assignee-object-id $(az identity show -n $name-aks-agentpool -g $name-aks-infra-rg --query principalId -o tsv) --role "AcrPull" --scope $(az acr show -n ${name/-/}cr --query id -o tsv) --assignee-principal-type ServicePrincipal
+
+# assign resource group contributor role for creating ACI CGs.
+
+az role assignment create --assignee-object-id $(az identity show -n $name-aks-agentpool -g $name-aks-infra-rg --query principalId -o tsv) --role "Contributor" --scope $(az group show -g $name-rg --query id -o tsv) --assignee-principal-type ServicePrincipal
+
+az role assignment create --assignee-object-id $(az identity show -n $name-aks-agentpool -g $name-aks-infra-rg --query principalId -o tsv) --role "Contributor" --scope $(az group show -g $name-aks-infra-rg --query id -o tsv) --assignee-principal-type ServicePrincipal
+```
+
+# install vn2 app
+```
+az aks get-credentials -n $name-aks -g $name-rg
+az provider register -n Microsoft.ContainerInstance
+# https://github.com/azure-core-compute/VirtualNodesOnACI-1P
+helm install $name vn2-helm
+
+# check the vn2 running
+kubectl get nodes
+```
+
+# deploy service account to aks
+```
+# get clientId of the user assigned identity
+az identity show -g $name-rg -n $name-identity --query clientId -o tsv
+#-> manually update the workload identity in sa.yaml file
+
+# kubelogin by default will use the kubeconfig from ${KUBECONFIG}.
+# Specify --kubeconfig to override this converts to use azurecli login mode
 kubelogin convert-kubeconfig -l azurecli
-
 
 kubectl apply -f sa.yaml
 ```
 
-
 # docker build 
 ```
-docker build -t xueweihan/${name}:0.1 .
-docker run --rm -p 8081:8081 xueweihan/${name}:0.1
-test http://localhost:8081/https/www.google.com/search?q=hello in browser
-docker login
-docker push xueweihan/${name}:0.1
+export acr=$(az acr show -n ${name/-/}cr --query loginServer -o tsv)
+export ver=0.1
+
+docker build -t $acr/$name:$ver .
+
+docker run --rm -p 8081:8081 $acr/${name}:$ver
+#-> test http://localhost:8081/https:/www.google.com/search?q=hello in browser
+
+az acr login -n $acr
+
+docker push $acr/$name:$ver
+```
+
+# confidential container deployment
+```
+#-> maually update the image name in the demo7.yaml to following name
+echo $acr/$name:$ver
+
+# create cc policy
+./ccpolicy.sh demo7.yaml
+
+kubectl apply -f demo7-cc.yaml
+
+# check pods
+kubectl get pods
+kubectl describe pod <pod-name>
+
+# verify pod is confidential
+./ccpod.sh $name-aks-infra-rg <pod-id>
+```
+
+# ingress & app is running
+```
+kubectl apply -f ingress.yaml
+
+# get you ingress service external ip
+ip=$(kubectl get service -n app-routing-system nginx -o jsonpath="{.status.loadBalancer.ingress[0].ip}")
+
+curl http://$ip/hello/world?name=hunter
+
+echo $ip
+#-> use browser to visit http://<external-ip>/https:/www.google.com/search?q=hello
+```
+
+# verify the egress ip
+```
+# show expected egress ip address
+az network public-ip show -n $name-public-ip -g $name-rg --query ipAddress -o tsv
+
+curl http://$ip/http:/checkip.dyndns.org
+```
+
+# verify the workload identity works
+```
+# assign role to yourself to create a secret into the kevvault for testing
+
+az role assignment create --role "Key Vault Secrets Officer" --scope $(az keyvault show -n $name-keyvault --query id -o tsv) --assignee-object-id $(az ad signed-in-user show --query id -o tsv) --assignee-principal-type User
+
+az keyvault secret set --vault-name $name-keyvault -n testkey --value "hello world!"
+
+curl http://$ip/?vault=hunter-demo7-keyvault&secret=testkey
+```
+
+# Other Tests
+```
+https -> https ingress + cert-manager + let's encrypt
+dotnet -> .NET linux container
+
 ```
 
 
-# confcom
+
+
+
+
+
+# attestation?
 ```
-az acr login -n $acrName `
-                      -u $(az acr credential show -n $acrName --query "username" -o tsv) `
-                      -p $(az acr credential show -n $acrName --query "passwords[0].value" -o tsv)
-az confcom katapolicygen -y demo6.yaml --print-policy | base64 -d | sha256sum | cut -d' ' -f1
 az attestation show -n hunter${name}attest -g hunter-$name-rg --query attestUri -o tsv
 https://hunterdemo6attest.eus.attest.azure.net
 update the key-release-policy.json

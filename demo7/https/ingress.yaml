@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo7-ing
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+  tls:
+  - secretName: letsencrypt-key
+    hosts:
+    - demo7.hunterapp.net
+    - test.hunterapp.net
+  rules:
+  - host: demo7.hunterapp.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo7-srv
+            port:
+              number: 80
+      - path: /api/hello
+        pathType: Exact
+        backend:
+          service:
+            name: azfunc-srv
+            port:
+              number: 80
+      - path: /dotnet
+        pathType: Prefix
+        backend:
+          service:
+            name: dotnet-srv
+            port:
+              number: 80
+  # - host: test.hunterapp.net
+  #   http:
+  #     paths:
+  #     - path: /
+  #       pathType: Prefix
+  #       backend:
+  #         service:
+  #           name: demo7-srv
+  #           port:
+  #             number: 80
