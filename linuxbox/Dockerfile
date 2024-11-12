@@ -6,7 +6,7 @@ RUN apt update &&\
 
 # Install Go language
 RUN rm -rf /usr/local/go &&\
-    curl -L https://go.dev/dl/go1.22.2.linux-amd64.tar.gz | tar xzf - -C /usr/local &&\
+    curl -L https://go.dev/dl/go1.23.2.linux-amd64.tar.gz | tar xzf - -C /usr/local &&\
     echo 'PATH=$PATH:/usr/local/go/bin' >>~/.bashrc
 
 # Install Azure cli
@@ -32,7 +32,7 @@ RUN echo "deb http://security.ubuntu.com/ubuntu focal-security main" | tee /etc/
 
 # Install libssl1.1 & docker cli & kubectl & Azure functions core tools
 RUN apt update && apt upgrade -y &&\
-    apt install libssl1.1 docker-ce-cli docker-compose kubectl azure-functions-core-tools-4 -y
+    apt install libssl1.1 docker-ce-cli docker-compose kubectl azure-functions-core-tools-4 jq -y
 
 # Install bicep, aks-preview, confcom, attestation
 RUN az bicep install &&\
@@ -41,7 +41,7 @@ RUN az bicep install &&\
     az extension add --name attestation --allow-preview true
 
 # Install Helm
-RUN curl -L https://get.helm.sh/helm-v3.14.3-linux-amd64.tar.gz | tar xzf - -C /tmp &&\
+RUN curl -L https://get.helm.sh/helm-v3.16.2-linux-amd64.tar.gz | tar xzf - -C /tmp &&\
     mv /tmp/linux-amd64/helm /usr/local/bin/helm &&\
     rm -r /tmp/linux-amd64
 

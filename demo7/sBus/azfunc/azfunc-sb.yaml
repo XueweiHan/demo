@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azfunc-sb-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azfunc-sb
+  template:
+    metadata:
+      labels:
+        app: azfunc-sb
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: demo7-sa
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: azfunc-sb
+          image: hunterdemo7cr.azurecr.io/demo7-func-sb:0.1
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: azfunc-sb-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: azfunc-sb
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

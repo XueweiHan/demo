@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azfunc-sb-fr-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azfunc-sb-fr
+  template:
+    metadata:
+      labels:
+        app: azfunc-sb-fr
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: demo7-sa
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: azfunc-sb-fr
+          image: hunterdemo7cr.azurecr.io/demo7-func-sb-fr:0.1
+

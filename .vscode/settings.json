@@ -1,6 +1,8 @@
 {
-    "azureFunctions.deploySubpath": "demo6\\azfunc",
-    "azureFunctions.projectLanguage": "Custom",
+    "azureFunctions.deploySubpath": "demo7\\sBus\\azfunc/bin/Release/net6.0/publish",
+    "azureFunctions.projectLanguage": "C#",
     "azureFunctions.projectRuntime": "~4",
-    "debug.internalConsoleOptions": "neverOpen"
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.projectSubpath": "demo7\\sBus\\azfunc",
+    "azureFunctions.preDeployTask": "publish (functions)"
 }

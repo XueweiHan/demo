@@ -3,7 +3,7 @@ version: "3"
 services:
   devbox:
     container_name: linuxbox
-    image: torusdev.azurecr.io/devlinux
+    image: devlinux
     ports:
       - 8000-8060:8000-8060
       - 7071:7071
