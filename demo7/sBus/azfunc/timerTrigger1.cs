@@ -1,15 +1,18 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading.Tasks;
 
 namespace azfunc
 {
-    public class timerTrigger1
+    public class TimerTrigger1
     {
-        [FunctionName("timerTrigger1")]
-        public void Run([TimerTrigger("*/10 * * * * *")]TimerInfo myTimer, ILogger log)
+        [FunctionName("TimerTrigger1")]
+        public async Task Run([TimerTrigger("*/3 * * * * *")]TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+            log.LogInformation($"TimerTrigger1 start");
+            await Task.Delay(2000);
+            log.LogInformation($"TimerTrigger1 end");
         }
     }
 }
