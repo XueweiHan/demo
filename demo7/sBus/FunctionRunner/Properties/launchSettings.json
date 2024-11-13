@@ -3,7 +3,7 @@
     "FunctionRunner": {
       "commandName": "Project",
       "environmentVariables": {
-        "AzureWebJobsScriptRoot": "C:/repos/demo/demo7/sBus/azfunc/bin/publish",
+        "AzureWebJobsScriptRoot": "C:/repos/demo/demo7/sBus/azfunc/bin/Debug/net6.0",
         "ServiceBusConnection__fullyQualifiedNamespace": "hunter-demo7-test.servicebus.windows.net",
         "ServiceBusConnection2__fullyQualifiedNamespace": "hunter-demo7-test.servicebus.windows.net"
       }

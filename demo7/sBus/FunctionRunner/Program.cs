@@ -7,8 +7,9 @@ namespace FunctionRunner
     public class FunctionBinding
     {
         public required string Type { get; set; }
-        public required string Connection { get; set; }
-        public required string QueueName { get; set; }
+        public string Connection { get; set; }
+        public string QueueName { get; set; }
+        public string Schedule { get; set; }
     }
 
     public class FunctionDefination
@@ -43,7 +44,15 @@ namespace FunctionRunner
 
             foreach (var info in functionInfos)
             {
-                new ServiceBusMessageHandler(info, logger);
+                var type = info.Function.Bindings[0].Type;
+                if (type == "serviceBusTrigger")
+                {
+                    new ServiceBusMessageHandler(info, logger);
+                }
+                else if (type == "timerTrigger")
+                {
+                    new TimerTriggerHandler(info, logger);
+                }
             }
 
             // var port = Environment.GetEnvironmentVariable("FuctionRunnerHttpPort");
@@ -51,7 +60,7 @@ namespace FunctionRunner
             // var httpHandler = new HttpHandler(portNumber);
             // httpHandler.Start();
 
-            Console.WriteLine("Press Ctrl-C to exit.");
+            Console.WriteLine($"{Environment.NewLine}Press Ctrl-C to exit.{Environment.NewLine}");
             Thread.Sleep(Timeout.Infinite);
         }
 
