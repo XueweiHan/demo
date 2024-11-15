@@ -26,8 +26,9 @@ az role assignment create --role "Azure Service Bus Data Owner" --scope $(az ser
 # Build helper az-cli image for local testing
 ```
 docker build -t az-cli .
+docker build -t az-cli-alpine -f Dockerfile_alpine .
 ```
 
 
 # Continue in the folder FunctionRunner
-# Continue in the folder azfunc
+# Continue in the folder Functions

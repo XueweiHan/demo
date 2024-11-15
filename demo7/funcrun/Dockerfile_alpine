@@ -1,0 +1,7 @@
+FROM alpine:3.20
+
+# install azure cli
+RUN apk add --no-cache py3-pip gcc musl-dev python3-dev libffi-dev openssl-dev cargo make &&\
+    pip install --break-system-packages --upgrade pip &&\
+    pip install --break-system-packages azure-cli &&\
+    rm -rf ~/.cache/pip

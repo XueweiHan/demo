@@ -8,7 +8,7 @@ namespace Functions
         [FunctionName("ServiceBusTrigger2")]
         public void Run([ServiceBusTrigger("queue2", Connection = "ServiceBusConnection2")] string myQueueItem, ILogger log)
         {
-            log.LogInformation($"C# ServiceBus queue trigger [demo7queue2]: {myQueueItem}");
+            log.LogInformation($"C# ServiceBus queue trigger [queue2]: {myQueueItem}");
         }
     }
 }

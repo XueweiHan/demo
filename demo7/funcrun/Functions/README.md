@@ -29,7 +29,7 @@ dotnet .\QueueSender\bin\Debug\net6.0\QueueSender.dll
 #-> Run FunctionRunner in VS
 ```
 
-# local function image base container run
+# local function base container run
 ```
 linux:
 export name=hunter-demo7
@@ -69,30 +69,19 @@ az acr login -n $acr
 
 # deploy functions with function base image
 
-docker build -t $acr/demo7-func-sb:$ver .
-docker push $acr/demo7-func-sb:$ver
+docker push $acr/demo7-func-fb:$ver
 
-kubectl apply -f azfunc-sb.yaml
-
-kubectl get all 
-kubectl logs pod/azfunc-sb-dpl-84849bfd74-r785h --follow
-
-# deploy functions with function runner base image
-docker build -t $acr/demo7-func-sb-fr:$ver -f Dockerfile_func_runner .
-docker push $acr/demo7-func-sb-fr:$ver
-
-kubectl apply -f azfunc-sb-fr.yaml
+kubectl apply -f azfunc-fb.yaml
 
 kubectl get all 
-kubectl logs pod/azfunc-sb-dpl-84849bfd74-r785h --follow
+kubectl logs pod/azfunc-fb-dpl-6ff8db68b9-4n4jp --follow
 
+# deploy functions with function runner image
 
+docker push $acr/demo7-func-fr:$ver
 
+kubectl apply -f azfunc-fr.yaml
 
-
-    docker run -d --name linuxbox -v "$Env:USERPROFILE\.azure:/root/.azure" -v "$Env:USERPROFILE\.kube:/root/.kube" -v "c:\\repos:/src" -v "//var/run/docker.sock:/var/run/docker.sock" -p 7071:7071 -p 8000-8060:8000-8060 devlinux
-
-
-
-mkdir -p bin/publish
-dotnet publish azfunc.csproj --output bin/publish
+kubectl get all 
+kubectl logs pod/azfunc-fr-dpl-58cdcf44-s7q5v --follow
+```

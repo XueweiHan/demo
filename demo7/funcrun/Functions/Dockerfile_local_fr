@@ -1,15 +1,11 @@
-FROM az-cli AS installer-env
+FROM az-cli-alpine AS installer-env
 
 FROM hunterdemo7cr.azurecr.io/demo7-func-fr:0.1
 
 ###################################################
 # for local testing
 
-# copy az cli
-COPY --from=installer-env ["/usr/bin/az", "/usr/bin/az"]
-COPY --from=installer-env ["/opt/az", "/opt/az"]
-
-# Install azure cli
-# RUN apt update &&\
-#     apt install curl -y &&\
-#     curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+# Copy azure cli & its dependencies
+COPY --from=installer-env ["/usr/bin", "/usr/bin"]
+COPY --from=installer-env ["/usr/lib/libpython3.12.so.1.0", "/usr/lib/libpython3.12.so.1.0"]
+COPY --from=installer-env ["/usr/lib/python3.12", "/usr/lib/python3.12"]
