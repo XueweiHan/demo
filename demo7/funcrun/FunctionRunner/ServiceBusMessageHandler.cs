@@ -42,10 +42,30 @@ namespace FunctionRunner
         async Task MessageHandler(ProcessMessageEventArgs args)
         {
             var body = args.Message.Body.ToString();
+            var parameters = new List<object>();
+            foreach (var p in _funcInfo.Parameters)
+            {
+                object obj = null;
+                switch (p.ParameterType.FullName)
+                {
+                    case "Microsoft.Extensions.Logging.ILogger":
+                        obj = _logger;
+                        break;
+                    case "System.String":
+                        // TODO: do we need to check the attribute on the parameter?
+                        obj = body;
+                        break;
+                    case "System.Threading.CancellationToken":
+                        // TODO: cancel Token, base on the timeout attribute on the method
+                        break;
+                }
+
+                parameters.Add(obj);
+            }
 
             Console.WriteLine($"[{ConsoleColor.Cyan}{_name}{ConsoleColor.Default} message received at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
 
-            _funcInfo.Method.Invoke(_funcInfo.Instance, new object[] { body, _logger });
+            _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
 
             // complete the message. message is deleted from the queue. 
             await args.CompleteMessageAsync(args.Message);

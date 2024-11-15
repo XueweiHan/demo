@@ -43,7 +43,7 @@ $ver=0.1
 #-> Manually update the servcie bus namespace name in all 2 non-local Dockerfiles
 docker build -t $acr/demo7-func-fb:$ver -f Dockerfile_fb .
 
-#-> Manually the Dockerfile_local_fb to use previous image as base image
+#-> Manually update the Dockerfile_local_fb to use previous image as base image
 docker build -t demo7-func-fb -f Dockerfile_local_fb .
 
 docker run --rm -it demo7-func-fb

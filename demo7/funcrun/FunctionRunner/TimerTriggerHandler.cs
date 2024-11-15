@@ -28,10 +28,28 @@ namespace FunctionRunner
             Console.WriteLine($"  Entry:      {_funcInfo.Function.EntryPoint}");
             Console.WriteLine($"  Schedule:   {binding.Schedule}");
 
+
+            var parameters = new List<object>();
+            foreach (var p in _funcInfo.Parameters)
+            {
+                object obj = null;
+                switch (p.ParameterType.FullName)
+                {
+                    case "Microsoft.Extensions.Logging.ILogger":
+                        obj = _logger;
+                        break;
+                    case "System.Threading.CancellationToken":
+                        // TODO: cancel Token, base on the timeout attribute on the method
+                        break;
+                }
+
+                parameters.Add(obj);
+            }
+
             _ = Run(binding.Schedule, () =>
             {
                 Console.WriteLine($"[{ConsoleColor.Cyan}{_name}{ConsoleColor.Default} at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
-                _funcInfo.Method.Invoke(_funcInfo.Instance, new object[] { null, _logger });
+                _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
             });
         }
 
@@ -61,7 +79,7 @@ namespace FunctionRunner
                         await Task.Delay(nextCheckTimeSpan);
                     }
                 }
-              
+
                 action();
 
                 while (schedule.GetNextOccurrence(DateTime.UtcNow) == next)

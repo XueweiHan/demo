@@ -24,6 +24,7 @@ namespace FunctionRunner
         public required FunctionDefination Function { get; set; }
         public required dynamic Instance { get; set; }
         public required MethodInfo Method { get; set; }
+        public required ParameterInfo[] Parameters { get; set; }
         public required string JsonFilePath { get; set; }
     }
 
@@ -92,6 +93,7 @@ namespace FunctionRunner
                             Function = function,
                             Method = method!,
                             Instance = instance!,
+                            Parameters = method!.GetParameters().ToArray()!,
                             JsonFilePath = file,
                         });
                     }

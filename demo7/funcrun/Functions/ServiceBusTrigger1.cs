@@ -1,13 +1,15 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace azfunc
+namespace Functions
 {
     public class ServiceBusTrigger1
     {
         [FunctionName("ServiceBusTrigger1")]
-        public async Task RunAsync([ServiceBusTrigger("queue1", Connection = "ServiceBusConnection1")] string myQueueItem, ILogger log)
+        [Timeout("00:00:10")]
+        public async Task RunAsync([ServiceBusTrigger("queue1", Connection = "ServiceBusConnection1")] string myQueueItem, ILogger log, CancellationToken cancellationToken)
         {
             log.LogInformation($"[{myQueueItem}] received");
             log.LogWarning($"[{myQueueItem}] warning");
