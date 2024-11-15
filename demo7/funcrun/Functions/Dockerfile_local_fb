@@ -1,0 +1,13 @@
+FROM hunterdemo7cr.azurecr.io/demo7-func-fb:0.1
+
+###################################################
+# for local testing
+
+# Install azure cli
+RUN apt update &&\
+    apt install curl -y &&\
+    curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+COPY login.sh /home/site/wwwroot/
+
+CMD ["/home/site/wwwroot/login.sh"]

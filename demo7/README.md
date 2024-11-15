@@ -55,7 +55,8 @@ kubectl apply -f sa.yaml
 
 # docker build 
 ```
-export acr=$(az acr show -n ${name/-/}cr --query loginServer -o tsv)
+export name=hunter-demo7
+export acr=${name/-/}cr.azurecr.io
 export ver=0.1
 
 docker build -t $acr/$name:$ver .

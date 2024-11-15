@@ -1,0 +1,15 @@
+FROM az-cli AS installer-env
+
+FROM hunterdemo7cr.azurecr.io/demo7-func-fr:0.1
+
+###################################################
+# for local testing
+
+# copy az cli
+COPY --from=installer-env ["/usr/bin/az", "/usr/bin/az"]
+COPY --from=installer-env ["/opt/az", "/opt/az"]
+
+# Install azure cli
+# RUN apt update &&\
+#     apt install curl -y &&\
+#     curl -sL https://aka.ms/InstallAzureCLIDeb | bash
