@@ -1,0 +1,171 @@
+
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: azurefile-sc
+provisioner: file.csi.azure.com
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+mountOptions:
+  - mfsymlinks
+  - actimeo=1
+  - nosharesock
+parameters:
+  skuName: Standard_LRS
+
+---
+# https://learn.microsoft.com/en-us/azure/aks/azure-files-csi
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-azurefile
+spec:
+  storageClassName: azurefile-sc
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-writer-vn2-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-writer-vn2
+  template:
+    metadata:
+      labels:
+        app: log-writer-vn2
+    spec:
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: log-generator
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          # image: mcr.microsoft.com/azure-functions/dotnet:4
+          command: ["bash", "-c"]
+          args:
+          - |
+            LOG_FILE=/mnt/azurefile/app.log
+            LOG_PIPE=/tmp/logpipe
+
+            rm -f $LOG_PIPE
+            mkfifo $LOG_PIPE    # Create a named pipe for logging
+
+            # Start log file rotation in the background
+            (
+              while true; do
+                cat $LOG_PIPE >> $LOG_FILE &        # Start a cat process to write the log file
+                cat_pid=$!                          # Store the PID of the cat process
+
+                today=$(date +%Y-%m-%d_%H)       # Get the current date in YYYY-MM-DD_HH-MM format
+                while [ "$today" = "$(date +%Y-%m-%d_%H)" ]; do
+                    sleep 30                         # Sleep until the hour changes
+                done
+
+                kill $cat_pid                       # Kill the cat process, pausing the log file write
+    
+                cp $LOG_FILE $LOG_FILE.$today       # copy & trunc, cannot use mv here, the reader will get "Stale file handle"
+                : > $LOG_FILE
+
+                gzip $LOG_FILE.$today &             # Compress the rotated log file
+              done
+            ) &
+
+            # Redirect all stdout and stderr to the log pipe
+            exec > >(tee -a $LOG_PIPE) 2>&1
+
+            # main - generate logs
+            i=0
+            while true; do
+              echo "$(date +'%Y-%m-%d %H:%M:%S') --- $i --- VN2"
+              i=$((i+1))
+              sleep 5
+            done
+
+            /opt/startup/start_nonappservice.sh
+
+          volumeMounts:
+            - name: shared-log
+              mountPath: /mnt/azurefile
+      volumes:
+        - name: shared-log
+          persistentVolumeClaim:
+            claimName: pvc-azurefile
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-reader-pn-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-reader-pn
+  template:
+    metadata:
+      labels:
+        app: log-reader-pn
+    spec:
+      containers:
+        - name: log-reader
+          # image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          image: mcr.microsoft.com/azure-functions/dotnet:4
+          command: ["bash", "-c"]
+          args:
+            - tail --retry -F /mnt/azurefile/app.log
+          volumeMounts:
+            - name: shared-log
+              mountPath: /mnt/azurefile
+      volumes:
+        - name: shared-log
+          persistentVolumeClaim:
+            claimName: pvc-azurefile
+
+---
+# kind: StorageClass
+# apiVersion: storage.k8s.io/v1
+# metadata:
+#   name: azurefile-sc
+# provisioner: file.csi.azure.com # replace with "kubernetes.io/azure-file" if aks version is less than 1.21
+# allowVolumeExpansion: true
+# mountOptions:
+#  - dir_mode=0777
+#  - file_mode=0777
+#  - uid=0
+#  - gid=0
+#  - mfsymlinks
+#  - cache=strict
+#  - actimeo=30
+#  - nobrl  # disable sending byte range lock requests to the server and for applications which have challenges with posix locks
+# parameters:
+#   skuName: Standard_LRS
+
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: azurefile-pvc
+# spec:
+#   accessModes:
+#     - ReadWriteMany
+#   storageClassName: azurefile-sc
+#   resources:
+#     requests:
+#       storage: 100Gi
+
+---
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/azurefile-csi-driver/master/deploy/example/pvc-azurefile-csi.yaml
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/azurefile-csi-driver/master/deploy/example/nginx-pod-azurefile.yaml

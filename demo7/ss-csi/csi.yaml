@@ -1,0 +1,123 @@
+---
+# SecretProviderClass are using workload identity to access key vault
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: azure-kv-demo7-csi
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    clientID: 7b07145c-01f9-48b1-9483-02cfe4c75aa5  # Setting this to use workload identity
+    tenantId: 9d8a5284-143b-4bde-82fd-d82b6bccb5fc  # The tenant ID of the key vault
+    keyvaultName: hunter-demo7-keyvault             # Set to the name of your key vault
+    cloudName: ""                                   # [OPTIONAL for Azure] if not provided, the Azure environment defaults to AzurePublicCloud
+    objects: |
+      array:
+        - |
+          objectName: testsecret1
+          objectType: secret
+        - |
+          objectName: testKey1
+          objectType: key
+  secretObjects:                                    # create k8s secret objects
+  - secretName: keyvault-csi-secrets
+    type: Opaque
+    data:
+    - objectName: testsecret1
+      key: testsecret1
+    - objectName: testKey1
+      key: testKey1
+
+---
+# create a pod to sync secrets
+kind: Pod
+apiVersion: v1
+metadata:
+  name: secrets-csi-sync
+  labels:
+    azure.workload.identity/use: 'true'
+spec:
+  serviceAccountName: demo7-sa
+  containers:
+    - name: secrets-csi-sync
+      image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+      command:
+        - "/bin/sleep"
+        - "600"
+      volumeMounts:
+      - name: secrets-store01-inline                # once we mount the volume, the k8s secret object will be created
+        mountPath: /mnt/secrets-store               # we can see the secret files in this path (insecurity)
+        readOnly: true
+  volumes:
+    - name: secrets-store01-inline
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: azure-kv-demo7-csi   # volumne to sync with the SecretProviderClass
+
+---
+# create a vn2 pod to use the k8s secret object
+kind: Pod
+apiVersion: v1
+metadata:
+  name: busybox-secrets-store-inline-wi
+  labels:
+    azure.workload.identity/use: "true"
+spec:
+  serviceAccountName: demo7-sa
+  nodeSelector:
+    virtualization: virtualnode2
+  tolerations:
+    - effect: NoSchedule
+      key: virtual-kubelet.io/provider
+      operator: Exists
+  containers:
+    - name: busybox
+      image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+      command:
+        - "/bin/sleep"
+        - "infinity"
+      volumeMounts:
+      - name: secrets-store01-inline
+        mountPath: "/mnt/secrets-store"
+        readOnly: true
+  volumes:
+    - name: secrets-store01-inline
+      secret:
+        secretName: keyvault-csi-secrets    # directly use the k8s secret object but not the csi volume
+
+---
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: secrets-csi-sync
+# spec:
+#   selector:
+#     matchLabels:
+#       app: secrets-csi-sync-app
+#   template:
+#     metadata:
+#       labels:
+#         app: secrets-csi-sync-app
+#         azure.workload.identity/use: 'true'
+#     spec:
+#       serviceAccountName: demo7-sa
+#       containers:
+#         - name: secrets-csi-sync
+#           image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+#           command:
+#             - /bin/sleep
+#             - infinity
+#           volumeMounts:
+#             - name: secrets-store-csi-volume
+#               mountPath: /mnt/secrets-store
+#               readOnly: true
+#       volumes:
+#         - name: secrets-store-csi-volume
+#           csi:
+#             driver: secrets-store.csi.k8s.io
+#             readOnly: true
+#             volumeAttributes:
+#               secretProviderClass: azure-kv-demo7-csi

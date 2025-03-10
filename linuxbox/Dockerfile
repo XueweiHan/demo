@@ -4,7 +4,7 @@ FROM ubuntu:24.10
 # RUN apt update &&\
 #     apt install ca-certificates curl git gpg libicu70 lsb-release dnsutils make -y
 RUN apt update &&\
-    apt install -y ca-certificates curl git gpg lsb-release dnsutils make wget unzip jq dotnet-sdk-9.0
+    apt install -y ca-certificates curl git gpg lsb-release dnsutils make wget unzip jq dotnet-sdk-9.0 dos2unix
 
 # Install Go language
 RUN rm -rf /usr/local/go &&\
@@ -36,7 +36,8 @@ RUN wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsof
 RUN echo "deb http://security.ubuntu.com/ubuntu focal-security main" | tee /etc/apt/sources.list.d/focal-security.list
 
 # Install libssl1.1 & docker cli & kubectl & Azure functions core tools
-RUN apt update && apt upgrade -y &&\
+# RUN apt update && apt upgrade -y &&\
+RUN apt update &&\
     apt install libssl1.1 docker-ce-cli docker-compose kubectl azure-functions-core-tools-4 -y
 
 # Install bicep, aks-preview, confcom, attestation

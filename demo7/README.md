@@ -9,12 +9,16 @@ az account set -s cd8a92db-a0c2-4273-816c-5149a1a1c5c9
 az configure --defaults location=eastus
 export name=hunter-demo7
 
-az group create -g $name-rg
+./deploy.sh
+or
+az deployment sub create --template-file demo-main.bicep --parameters "{\"project_name\":{\"value\":\"$name\"}}"
 
-az deployment group create -g $name-rg --template-file demo7.bicep --parameters "{\"project_name\":{\"value\":\"$name\"}}"
+# old steps:
+# az group create -g $name-rg
+# az deployment group create -g $name-rg --template-file demo7.bicep --parameters "{\"project_name\":{\"value\":\"$name\"}}"
 ```
 
-# assign roles to aks agentpool
+# assign roles to aks agentpool (deprecated by the new deploy.sh/demo-main.bicep)
 ```
 # assign acr pull role
 

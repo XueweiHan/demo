@@ -1,0 +1,86 @@
+# This is a SecretProviderClass example using workload identity to access your key vault
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: azure-kv-demo7-csi
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    clientID: 7b07145c-01f9-48b1-9483-02cfe4c75aa5  # Setting this to use workload identity
+    keyvaultName: hunter-demo7-keyvault             # Set to the name of your key vault
+    cloudName: ""                                   # [OPTIONAL for Azure] if not provided, the Azure environment defaults to AzurePublicCloud
+    objects: |
+      array:
+        - |
+          objectName: testsecret1
+          objectType: secret
+        - |
+          objectName: testKey1
+          objectType: key
+    tenantId: 9d8a5284-143b-4bde-82fd-d82b6bccb5fc        # The tenant ID of the key vault
+  secretObjects:
+  - secretName: keyvault-csi-secrets
+    type: Opaque
+    data:
+    - objectName: testsecret1
+      key: testsecret1
+    - objectName: testKey1
+      key: testKey1
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: busybox-secrets-store-inline-wi
+  labels:
+    azure.workload.identity/use: "true"
+spec:
+  serviceAccountName: demo7-sa
+  nodeSelector:
+    virtualization: virtualnode2
+  tolerations:
+    - effect: NoSchedule
+      key: virtual-kubelet.io/provider
+      operator: Exists
+  containers:
+    - name: busybox
+      # image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+      image: mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine
+      command:
+        - "/bin/sleep"
+        - "10000"
+      volumeMounts:
+      - name: secrets-store01-inline
+        mountPath: "/mnt/secrets-store"
+        readOnly: true
+  volumes:
+    - name: secrets-store01-inline
+      secret:
+        secretName: keyvault-csi-secrets
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: secrets-csi-sync
+  labels:
+    azure.workload.identity/use: 'true'
+spec:
+  serviceAccountName: demo7-sa
+  containers:
+    - name: secrets-csi-sync
+      # image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+      image: mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine
+      command:
+        - /bin/sleep
+        - infinity
+      volumeMounts:
+      - name: secrets-store01-inline
+        mountPath: /mnt/secrets-store
+        readOnly: true
+  volumes:
+    - name: secrets-store01-inline
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: azure-kv-demo7-csi

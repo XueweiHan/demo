@@ -1,4 +1,5 @@
-param project_name string = 'demo7'
+param project_name string
+param location string = resourceGroup().location
 
 param aks_tier string = 'Standard'
 param keyvault_sku string = 'Premium'
@@ -7,22 +8,20 @@ param aks_vmsize string = 'Standard_D3'
 param aks_system_node_count int = 2
 param aks_user_node_count int = 2
 
-param location string = resourceGroup().location
+param public_ip_name string = '${toLower(project_name)}-public-ip'
+param nat_gateway_name string = '${toLower(project_name)}-nat-gateway'
+param vnet_name string = '${toLower(project_name)}-vnet'
 
-param public_ip_name string = toLower('${project_name}-public-ip')
-param nat_gateway_name string = toLower('${project_name}-nat-gateway')
-param vnet_name string = toLower('${project_name}-vnet')
+param aks_name string = '${toLower(project_name)}-aks'
+param aks_node_resource_group string = '${aks_name}-infra-rg'
+param aks_dns_prefix string = '${toLower(project_name)}-dns-prefix'
 
-param aks_name string = toLower('${project_name}-aks')
-param aks_dns_prefix string = toLower('${project_name}-dns-prefix')
-param aks_node_resource_group string = toLower('${project_name}-aks-infra-rg')
+param identity_name string = '${toLower(project_name)}-identity'
+param identity_federated_credentials_name string = '${toLower(project_name)}-service-account-credentials'
+param aks_service_account_name string = 'demo7-sa'
 
-param identity_name string = toLower('${project_name}-identity')
-param identity_federated_credentials_name string = toLower('${project_name}-service-account-credentials')
-param aks_service_account_name string = toLower('demo7-sa')
-
-param keyvault_name string = toLower('${project_name}-keyvault')
-param container_registry_name string = replace(toLower('${project_name}cr'), '-', '')
+param keyvault_name string = '${toLower(project_name)}-keyvault'
+// param container_registry_name string = replace(toLower('${toLower(project_name)}cr'), '-', '')
 
 resource public_ip_resource 'Microsoft.Network/publicIPAddresses@2024-01-01' = {
   name: public_ip_name
@@ -117,7 +116,8 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
         minCount: aks_system_node_count
         maxCount: 5
         nodeTaints: ['CriticalAddonsOnly=true:NoSchedule']
-        vnetSubnetID: vnet_resource.properties.subnets[1].id
+        // vnetSubnetID: vnet_resource.properties.subnets[1].id
+        vnetSubnetID: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet_name, 'aks')
       }
       {
         name: 'userpool'
@@ -129,7 +129,8 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
         count: aks_user_node_count
         minCount: aks_user_node_count
         maxCount: 10
-        vnetSubnetID: vnet_resource.properties.subnets[1].id
+        // vnetSubnetID: vnet_resource.properties.subnets[1].id
+        vnetSubnetID: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet_name, 'aks')
       }
     ]
     autoUpgradeProfile: {
@@ -140,7 +141,7 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
       networkPolicy: 'calico'
       serviceCidr: '10.4.0.0/16'
       dnsServiceIP: '10.4.0.10'
-    } 
+    }
     ingressProfile: {
       webAppRouting: {
         enabled: true
@@ -170,6 +171,9 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
   identity: {
     type: 'SystemAssigned'
   }
+  dependsOn: [
+    vnet_resource
+  ]
 }
 
 resource identity_resource 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -201,35 +205,21 @@ resource keyvault_resource 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
-var KeyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
-resource keyvault_secret_user_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyvault_resource.id, 'Key Vault Secrets User', identity_resource.id)
-  scope: keyvault_resource
-  properties: {
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', KeyVaultSecretsUserRoleId)
-    principalId: identity_resource.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
+var keyvault_roles = [
+  '4633458b-17de-408a-b874-0445c86b69e6' //'Key Vault Secrets User'
+  '14b46e9e-c2b7-41b4-b07b-48a6ebf60603' //'Key Vault Crypto Officer'
+]
 
-var KeyVaultCryptoOfficerRoleId = '14b46e9e-c2b7-41b4-b07b-48a6ebf60603'
-resource keyvault_crypto_officer_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyvault_resource.id, 'Key Vault Crypto Officer', identity_resource.id)
-  scope: keyvault_resource
-  properties: {
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', KeyVaultCryptoOfficerRoleId)
-    principalId: identity_resource.properties.principalId
-    principalType: 'ServicePrincipal'
+resource keyvault_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for role in keyvault_roles: {
+    name: guid(keyvault_resource.id, role, identity_resource.id)
+    scope: keyvault_resource
+    properties: {
+      roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', role)
+      principalId: identity_resource.properties.principalId
+      principalType: 'ServicePrincipal'
+    }
   }
-}
+]
 
-resource container_registry_resource 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
-  name: container_registry_name
-  location: location
-  properties: {
-    adminUserEnabled: false
-  }
-  sku: {
-    name: 'Premium'
-  }
-}
+// output aks_node_resource_group string = aks_resource.properties.nodeResourceGroup

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-writer-vn2-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-writer-vn2
+  template:
+    metadata:
+      labels:
+        app: log-writer-vn2
+    spec:
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: log-writer
+          # image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          image: mcr.microsoft.com/azure-functions/dotnet:4
+          command: ["bash", "-c"]
+          args:
+          - |
+            i=0
+            while true; do
+              echo "$(date +'%Y-%m-%d %H:%M:%S') --- $i --- VN2"
+              i=$((i+1))
+              sleep 5
+            done
+
+            /opt/startup/start_nonappservice.sh

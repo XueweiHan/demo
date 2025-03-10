@@ -6,6 +6,9 @@ yaml_file="$1"
 cc_yaml_file="${yaml_file%.*}-cc.${yaml_file##*.}"
 cp -f "$yaml_file" "$cc_yaml_file"
 
+echo -e "\033[36mUpdating empty values in the YAML file...\033[0m"
+sed -i 's/^\(\s*value:\s\)$/\1""/g' "$cc_yaml_file"
+
 echo -e "\033[36mGenerating the virtual node confidential container policy...\033[0m"
 # az confcom acipolicygen --virtual-node-yaml "$cc_yaml_file" --print-policy | base64 -d | sha256sum | cut -d' ' -f1
 az confcom acipolicygen --virtual-node-yaml "$cc_yaml_file"
