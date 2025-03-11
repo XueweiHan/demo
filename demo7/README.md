@@ -37,8 +37,12 @@ az role assignment create --assignee-object-id $(az identity show -n $name-aks-a
 ```
 az aks get-credentials -n $name-aks -g $name-rg
 az provider register -n Microsoft.ContainerInstance
+
 # https://github.com/azure-core-compute/VirtualNodesOnACI-1P
 helm install $name vn2-helm
+or
+helm template $name vn2-helm > vn2.yaml
+kubectl apply -f vn2.yaml
 
 # check the vn2 running
 kubectl get nodes

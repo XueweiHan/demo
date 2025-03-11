@@ -20,9 +20,10 @@ spec:
           operator: Exists
       containers:
         - name: log-writer
-          # image: mcr.microsoft.com/cbl-mariner/busybox:2.0
-          image: mcr.microsoft.com/azure-functions/dotnet:4
-          command: ["bash", "-c"]
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          command: ["sh", "-c"]
+          # image: mcr.microsoft.com/azure-functions/dotnet:4
+          # command: ["bash", "-c"]
           args:
           - |
             i=0
