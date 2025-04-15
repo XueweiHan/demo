@@ -16,12 +16,14 @@ az deployment sub create --template-file deployment/main.bicep --parameters "{\"
 
 az aks get-credentials -n $name-aks -g $name-rg --overwrite-existing
 
+helm template $name vn2-helm >vn2.yaml
+
 kubectl apply -f vn2.yaml
 
-while ! kubectl get node hunter-virtualnode-0 >/dev/null 2>&1; do
+while ! kubectl get node $name-virtualnode-0 >/dev/null 2>&1; do
     sleep 1
 done
-kubectl wait --for=condition=Ready node/hunter-virtualnode-0 --timeout=5m
+kubectl wait --for=condition=Ready node/$name-virtualnode-0 --timeout=5m
 
 identity_client_id=$(az identity show -g $name-rg -n $name-identity --query clientId -otsv)
 

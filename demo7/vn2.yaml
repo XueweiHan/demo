@@ -9,13 +9,13 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: hunter-virtualnode-virtual-node2-helm
+  name: hunter-demo2-virtualnode-virtual-node2-helm
   namespace: vn2
   labels:
-    helm.sh/chart: virtualnode-1.3009.25031902
+    helm.sh/chart: virtualnode-1.3009.25031901
     app.kubernetes.io/name: virtualnode
-    app.kubernetes.io/instance: hunter
-    app.kubernetes.io/version: "1.3009.25031902"
+    app.kubernetes.io/instance: hunter-demo2
+    app.kubernetes.io/version: "1.3009.25031901"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: virtualnode/templates/secret.yaml
@@ -38,16 +38,16 @@ type: Opaque
 apiVersion: "rbac.authorization.k8s.io/v1"
 kind: ClusterRoleBinding
 metadata:
-  name: hunter-virtualnode-virtual-node2-helm
+  name: hunter-demo2-virtualnode-virtual-node2-helm
   labels:
-    helm.sh/chart: virtualnode-1.3009.25031902
+    helm.sh/chart: virtualnode-1.3009.25031901
     app.kubernetes.io/name: virtualnode
-    app.kubernetes.io/instance: hunter
-    app.kubernetes.io/version: "1.3009.25031902"
+    app.kubernetes.io/instance: hunter-demo2
+    app.kubernetes.io/version: "1.3009.25031901"
     app.kubernetes.io/managed-by: Helm
 subjects:
 - kind: ServiceAccount
-  name: hunter-virtualnode-virtual-node2-helm
+  name: hunter-demo2-virtualnode-virtual-node2-helm
   namespace: vn2
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -67,7 +67,7 @@ spec:
     targetPort: 19865
   selector:
     app.kubernetes.io/name: "admissioncontroller"
-    app.kubernetes.io/instance: hunter
+    app.kubernetes.io/instance: hunter-demo2
   type: ClusterIP
 ---
 # Source: virtualnode/templates/admissioncontroller.yaml
@@ -81,20 +81,20 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: "admissioncontroller"
-      app.kubernetes.io/instance: hunter
+      app.kubernetes.io/instance: hunter-demo2
   template:
     metadata:
       labels:
         app.kubernetes.io/name: "admissioncontroller"
-        app.kubernetes.io/instance: hunter
+        app.kubernetes.io/instance: hunter-demo2
       annotations:
         "kubernetes.azure.com/no-http-proxy-vars": "true"
     spec:
       terminationGracePeriodSeconds: 0
-      serviceAccountName:  "hunter-virtualnode-virtual-node2-helm" 
+      serviceAccountName:  "hunter-demo2-virtualnode-virtual-node2-helm" 
       containers:
         - name: admissioncontroller
-          image: mcr.microsoft.com/aci/virtual-node-2-admission-controller:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-admission-controller:main_20250319.1
           env:
             - name: SECRET_NAME
               value: virtual-node-admission-controller
@@ -115,39 +115,39 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: hunter-virtualnode
+  name: hunter-demo2-virtualnode
   namespace: vn2
   labels:
-    helm.sh/chart: virtualnode-1.3009.25031902
+    helm.sh/chart: virtualnode-1.3009.25031901
     app.kubernetes.io/name: virtualnode
-    app.kubernetes.io/instance: hunter
-    app.kubernetes.io/version: "1.3009.25031902"
+    app.kubernetes.io/instance: hunter-demo2
+    app.kubernetes.io/version: "1.3009.25031901"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: virtualnode
-      app.kubernetes.io/instance: hunter
+      app.kubernetes.io/instance: hunter-demo2
   template:
     metadata:
       annotations:
         "kubernetes.azure.com/no-http-proxy-vars": "true"
       labels:
         app.kubernetes.io/name: virtualnode
-        app.kubernetes.io/instance: hunter
+        app.kubernetes.io/instance: hunter-demo2
     spec:
       terminationGracePeriodSeconds: 0
-      serviceAccountName:  "hunter-virtualnode-virtual-node2-helm" 
+      serviceAccountName:  "hunter-demo2-virtualnode-virtual-node2-helm" 
       securityContext:
         {}
       initContainers:
         - name: init-config
-          image: mcr.microsoft.com/aci/virtual-node-2-init-config:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-init-config:main_20250319.1
           imagePullPolicy: Always
           env:
             - name: serviceaccountname
-              value: "hunter-virtualnode-virtual-node2-helm"
+              value: "hunter-demo2-virtualnode-virtual-node2-helm"
             - name: NodeName
               valueFrom:
                 fieldRef:
@@ -171,7 +171,7 @@ spec:
                 - NET_ADMIN
                 - NET_RAW
             privileged: true
-          image: mcr.microsoft.com/aci/virtual-node-2-kubelet:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-kubelet:main_20250319.1
           imagePullPolicy: Always
           volumeMounts:
             - mountPath: /var/lib/kubelet/
@@ -221,7 +221,7 @@ spec:
                 - NET_ADMIN
                 - NET_RAW
             privileged: true
-          image: mcr.microsoft.com/aci/virtual-node-2-virtual-csi:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-virtual-csi:main_20250319.1
           command:
             - /go/bin/virtual-csi
           args:
@@ -239,7 +239,7 @@ spec:
             limits:
               cpu: 3
               memory: 12G
-          image: mcr.microsoft.com/aci/virtual-node-2-cri-socket-adapter:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-cri-socket-adapter:main_20250319.1
           env:
             - name: ListenEndpoint
               value: /tmp/vcri.sock
@@ -263,7 +263,7 @@ spec:
             limits:
               cpu: 3
               memory: 12G
-          image: mcr.microsoft.com/aci/virtual-node-2-aci:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-aci:main_20250319.1
           imagePullPolicy: Always
         - name: proxycri
           resources:
@@ -273,7 +273,7 @@ spec:
             limits:
               cpu: 3
               memory: 12G
-          image: mcr.microsoft.com/aci/virtual-node-2-proxy-cri:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-proxy-cri:main_20250319.1
           imagePullPolicy: Always
           securityContext:
             capabilities:
