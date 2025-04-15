@@ -1,5 +1,5 @@
 # build stage
-FROM golang:1.22.2-alpine3.19 AS build-env
+FROM golang:alpine AS build-env
 
 # Redundant, current golang images already include ca-certificates
 RUN apk --no-cache add ca-certificates

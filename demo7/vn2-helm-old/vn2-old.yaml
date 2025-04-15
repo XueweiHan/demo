@@ -1,24 +1,24 @@
 ---
-# Source: virtualnode/templates/namespace.yml
+# Source: virtualnode2/templates/namespace.yml
 apiVersion: v1
 kind: Namespace
 metadata:
   name: vn2
 ---
-# Source: virtualnode/templates/serviceaccount.yaml
+# Source: virtualnode2/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: hunter-virtualnode-virtual-node2-helm
+  name: aci-virtualnode2-virtual-node2-helm
   namespace: vn2
   labels:
-    helm.sh/chart: virtualnode-1.3009.25031902
-    app.kubernetes.io/name: virtualnode
-    app.kubernetes.io/instance: hunter
-    app.kubernetes.io/version: "1.3009.25031902"
+    helm.sh/chart: virtualnode2-0.0.2
+    app.kubernetes.io/name: virtualnode2
+    app.kubernetes.io/instance: aci
+    app.kubernetes.io/version: "0.0.1"
     app.kubernetes.io/managed-by: Helm
 ---
-# Source: virtualnode/templates/secret.yaml
+# Source: virtualnode2/templates/secret.yaml
 kind: Secret
 apiVersion: v1
 metadata:
@@ -34,27 +34,27 @@ data:
   tls.key: 
 type: Opaque
 ---
-# Source: virtualnode/templates/clusterrolebinding.yml
+# Source: virtualnode2/templates/clusterrolebinding.yml
 apiVersion: "rbac.authorization.k8s.io/v1"
 kind: ClusterRoleBinding
 metadata:
-  name: hunter-virtualnode-virtual-node2-helm
+  name: aci-virtualnode2-virtual-node2-helm
   labels:
-    helm.sh/chart: virtualnode-1.3009.25031902
-    app.kubernetes.io/name: virtualnode
-    app.kubernetes.io/instance: hunter
-    app.kubernetes.io/version: "1.3009.25031902"
+    helm.sh/chart: virtualnode2-0.0.2
+    app.kubernetes.io/name: virtualnode2
+    app.kubernetes.io/instance: aci
+    app.kubernetes.io/version: "0.0.1"
     app.kubernetes.io/managed-by: Helm
 subjects:
 - kind: ServiceAccount
-  name: hunter-virtualnode-virtual-node2-helm
+  name: aci-virtualnode2-virtual-node2-helm
   namespace: vn2
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
 ---
-# Source: virtualnode/templates/service.yaml
+# Source: virtualnode2/templates/service.yaml
 kind: Service
 apiVersion: v1
 metadata:
@@ -67,10 +67,10 @@ spec:
     targetPort: 19865
   selector:
     app.kubernetes.io/name: "admissioncontroller"
-    app.kubernetes.io/instance: hunter
+    app.kubernetes.io/instance: aci
   type: ClusterIP
 ---
-# Source: virtualnode/templates/admissioncontroller.yaml
+# Source: virtualnode2/templates/admissioncontroller.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -81,20 +81,18 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: "admissioncontroller"
-      app.kubernetes.io/instance: hunter
+      app.kubernetes.io/instance: aci
   template:
     metadata:
       labels:
         app.kubernetes.io/name: "admissioncontroller"
-        app.kubernetes.io/instance: hunter
-      annotations:
-        "kubernetes.azure.com/no-http-proxy-vars": "true"
+        app.kubernetes.io/instance: aci
     spec:
       terminationGracePeriodSeconds: 0
-      serviceAccountName:  "hunter-virtualnode-virtual-node2-helm" 
+      serviceAccountName:  "aci-virtualnode2-virtual-node2-helm" 
       containers:
         - name: admissioncontroller
-          image: mcr.microsoft.com/aci/virtual-node-2-admission-controller:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-admission-controller:main_20240920.2
           env:
             - name: SECRET_NAME
               value: virtual-node-admission-controller
@@ -111,43 +109,41 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
 ---
-# Source: virtualnode/templates/deployment.yaml
+# Source: virtualnode2/templates/deployment.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: hunter-virtualnode
+  name: aci-virtualnode2
   namespace: vn2
   labels:
-    helm.sh/chart: virtualnode-1.3009.25031902
-    app.kubernetes.io/name: virtualnode
-    app.kubernetes.io/instance: hunter
-    app.kubernetes.io/version: "1.3009.25031902"
+    helm.sh/chart: virtualnode2-0.0.2
+    app.kubernetes.io/name: virtualnode2
+    app.kubernetes.io/instance: aci
+    app.kubernetes.io/version: "0.0.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: virtualnode
-      app.kubernetes.io/instance: hunter
+      app.kubernetes.io/name: virtualnode2
+      app.kubernetes.io/instance: aci
   template:
     metadata:
-      annotations:
-        "kubernetes.azure.com/no-http-proxy-vars": "true"
       labels:
-        app.kubernetes.io/name: virtualnode
-        app.kubernetes.io/instance: hunter
+        app.kubernetes.io/name: virtualnode2
+        app.kubernetes.io/instance: aci
     spec:
       terminationGracePeriodSeconds: 0
-      serviceAccountName:  "hunter-virtualnode-virtual-node2-helm" 
+      serviceAccountName:  "aci-virtualnode2-virtual-node2-helm" 
       securityContext:
         {}
       initContainers:
         - name: init-config
-          image: mcr.microsoft.com/aci/virtual-node-2-init-config:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-init-config:main_20240920.2
           imagePullPolicy: Always
           env:
             - name: serviceaccountname
-              value: "hunter-virtualnode-virtual-node2-helm"
+              value: "aci-virtualnode2-virtual-node2-helm"
             - name: NodeName
               valueFrom:
                 fieldRef:
@@ -171,26 +167,54 @@ spec:
                 - NET_ADMIN
                 - NET_RAW
             privileged: true
-          image: mcr.microsoft.com/aci/virtual-node-2-kubelet:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-kubelet:main_20240920.2
           imagePullPolicy: Always
           volumeMounts:
             - mountPath: /var/lib/kubelet/
               name: kubelet-root-dir
               mountPropagation: Bidirectional
-            - mountPath: /image-credential-provider/credential-provider-config.yaml
-              name: aks-credential-provider-yaml
-            - mountPath: /image-credential-provider/credential-provider
-              name: aks-credential-provider-binary
             - mountPath: /tmp/
               name: socket-volume
             - mountPath: /kubeconfig/
               name: kube-config-volume
-            - mountPath: /etc/kubernetes/azure.json
+            - mountPath: /etc/aks/azure.json
               name: aks-credential
             - mountPath: /etc/ssl/certs/ca-certificates.crt
               name: ca-certificates
             - mountPath: /var/log/pods
               name: container-logs
+          command:
+            - sh
+            - '-c'
+            - >-            
+              while [ ! -f /tmp/proxycriReady ]; do echo "waiting on proxyCri"; sleep 1; done;
+              mkdir -p /sys/fs/cgroup/$(NodeName);
+              mkdir -p /sys/fs/cgroup/cpuset/$(NodeName);
+              mkdir -p /sys/fs/cgroup/cpu,cpuacct/$(NodeName);
+              mkdir -p /sys/fs/cgroup/pids/$(NodeName);
+              mkdir -p /sys/fs/cgroup/memory/$(NodeName);
+              mkdir -p /sys/fs/cgroup/systemd/$(NodeName);
+              mkdir -p /sys/fs/cgroup/hugetlb/$(NodeName);
+              sleep 3;
+              /usr/local/bin/kubelet
+              --hostname-override=$(NodeName)
+              --kubeconfig=/kubeconfig/kubelet.conf
+              --azure-container-registry-config=/etc/aks/azure.json
+              --config=/kubeconfig/config.yaml
+              --authorization-mode=AlwaysAllow
+              --runtime-cgroups=$(NodeName)
+              --max-pods=200
+              --runtime-request-timeout=5m0s
+              --node-labels='microsoft.containerinstance.virtualnode=true,kubernetes.azure.com/managed=false,type=virtual-kubelet,virtualization=virtualnode2,microsoft.containerinstance.virtualnode.podname=$(NodeName),microsoft.containerinstance.virtualnode.podns=$(PodNS),'
+              --register-with-taints='virtual-kubelet.io/provider=azure:NoSchedule'
+              --cgroup-root=$(NodeName)
+              --enforce-node-allocatable=
+              --cgroups-per-qos=false
+              --anonymous-auth=true
+              --node-ip=$(NodeIP)
+              --container-runtime-endpoint=/tmp/vcri.sock
+              --image-service-endpoint=/tmp/vcri.sock
+              --v=8
           env:
             - name: NodeIP
               valueFrom:
@@ -204,8 +228,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: CustomNodeLabels
-              value: 
           resources: {}
         - name: virtualcsi
           resources:
@@ -221,7 +243,7 @@ spec:
                 - NET_ADMIN
                 - NET_RAW
             privileged: true
-          image: mcr.microsoft.com/aci/virtual-node-2-virtual-csi:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-virtual-csi:main_20240920.2
           command:
             - /go/bin/virtual-csi
           args:
@@ -239,7 +261,7 @@ spec:
             limits:
               cpu: 3
               memory: 12G
-          image: mcr.microsoft.com/aci/virtual-node-2-cri-socket-adapter:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-cri-socket-adapter:main_20240920.2
           env:
             - name: ListenEndpoint
               value: /tmp/vcri.sock
@@ -255,16 +277,6 @@ spec:
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           imagePullPolicy: Always
-        - name: spdycompat
-          resources:
-            requests:
-              cpu: 0
-              memory: 0G
-            limits:
-              cpu: 3
-              memory: 12G
-          image: mcr.microsoft.com/aci/virtual-node-2-aci:main_20250319.2
-          imagePullPolicy: Always
         - name: proxycri
           resources:
             requests:
@@ -273,7 +285,7 @@ spec:
             limits:
               cpu: 3
               memory: 12G
-          image: mcr.microsoft.com/aci/virtual-node-2-proxy-cri:main_20250319.2
+          image: mcr.microsoft.com/aci/virtual-node-2-proxy-cri:main_20240920.2
           imagePullPolicy: Always
           securityContext:
             capabilities:
@@ -322,8 +334,6 @@ spec:
               value: ""
             - name: SandboxProviderType
               value: OnDemand
-            - name: VirtualNode_Zones
-              value: ""
             - name: Subnets
               value: cg
             - name: AKS_CREDENTIAL_LOCATION
@@ -334,8 +344,6 @@ spec:
               value: cg
             - name: MountHostImage
               value: mcr.microsoft.com/aci/virtual-node-2-mount-host:main_20240920.2
-            - name: ResourceGroup
-              value: 
             - name: NodeName
               valueFrom:
                 fieldRef:
@@ -383,14 +391,6 @@ spec:
           hostPath:
             path: /etc/kubernetes/azure.json
             type: File
-        - name: aks-credential-provider-yaml
-          hostPath:
-            path: /var/lib/kubelet/credential-provider-config.yaml
-            type: FileOrCreate
-        - name: aks-credential-provider-binary
-          hostPath:
-            path: /var/lib/kubelet/credential-provider
-            type: DirectoryOrCreate         
         - name: credentials
           secret:
             secretName: virtual-node-admission-controller
@@ -399,7 +399,7 @@ spec:
         kubernetes.io/os: linux
   podManagementPolicy: "Parallel"
 ---
-# Source: virtualnode/templates/webhook.yaml
+# Source: virtualnode2/templates/webhook.yaml
 # If admission controller replica count is set to 0, don't create the webhook
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration

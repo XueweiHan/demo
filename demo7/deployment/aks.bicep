@@ -1,29 +1,24 @@
 param project_name string
 param location string = resourceGroup().location
 
-param aks_tier string = 'Standard'
-param keyvault_sku string = 'Premium'
+var aks_tier = 'Standard'
+var aks_vmsize = 'Standard_D3'
+var aks_system_node_count = 2
+var aks_user_node_count = 2
 
-param aks_vmsize string = 'Standard_D3'
-param aks_system_node_count int = 2
-param aks_user_node_count int = 2
+var public_ip_name = '${project_name}-public-ip'
+var nat_gateway_name = '${project_name}-nat-gateway'
+var vnet_name = '${project_name}-vnet'
 
-param public_ip_name string = '${toLower(project_name)}-public-ip'
-param nat_gateway_name string = '${toLower(project_name)}-nat-gateway'
-param vnet_name string = '${toLower(project_name)}-vnet'
+var aks_name = '${project_name}-aks'
+var aks_node_resource_group = '${aks_name}-node-rg'
+var aks_dns_prefix = '${project_name}-dns-prefix'
 
-param aks_name string = '${toLower(project_name)}-aks'
-param aks_node_resource_group string = '${aks_name}-infra-rg'
-param aks_dns_prefix string = '${toLower(project_name)}-dns-prefix'
+var identity_name = '${project_name}-identity'
+var identity_federated_credentials_name = '${project_name}-service-account-credentials'
+var aks_service_account_name = 'demo-sa'
 
-param identity_name string = '${toLower(project_name)}-identity'
-param identity_federated_credentials_name string = '${toLower(project_name)}-service-account-credentials'
-param aks_service_account_name string = 'demo7-sa'
-
-param keyvault_name string = '${toLower(project_name)}-keyvault'
-// param container_registry_name string = replace(toLower('${toLower(project_name)}cr'), '-', '')
-
-resource public_ip_resource 'Microsoft.Network/publicIPAddresses@2024-01-01' = {
+resource public_ip_resource 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
   name: public_ip_name
   location: location
   properties: {
@@ -35,7 +30,7 @@ resource public_ip_resource 'Microsoft.Network/publicIPAddresses@2024-01-01' = {
   }
 }
 
-resource nat_gateway_resource 'Microsoft.Network/natGateways@2024-01-01' = {
+resource nat_gateway_resource 'Microsoft.Network/natGateways@2024-05-01' = {
   name: nat_gateway_name
   location: location
   properties: {
@@ -51,7 +46,7 @@ resource nat_gateway_resource 'Microsoft.Network/natGateways@2024-01-01' = {
   }
 }
 
-resource vnet_resource 'Microsoft.Network/virtualNetworks@2024-01-01' = {
+resource vnet_resource 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: vnet_name
   location: location
   properties: {
@@ -67,18 +62,21 @@ resource vnet_resource 'Microsoft.Network/virtualNetworks@2024-01-01' = {
         name: 'default'
         properties: {
           addressPrefix: '10.0.0.0/24'
+          defaultOutboundAccess: false
         }
       }
       {
         name: 'aks'
         properties: {
           addressPrefix: '10.1.0.0/16'
+          defaultOutboundAccess: false
         }
       }
       {
         name: 'cg'
         properties: {
           addressPrefix: '10.2.0.0/16'
+          defaultOutboundAccess: false
           natGateway: {
             id: nat_gateway_resource.id
           }
@@ -96,11 +94,16 @@ resource vnet_resource 'Microsoft.Network/virtualNetworks@2024-01-01' = {
   }
 }
 
+resource subnet_aks 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
+  parent: vnet_resource
+  name: 'aks'
+}
+
 resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = {
   location: location
   name: aks_name
   properties: {
-    kubernetesVersion: '1.29.9'
+    // kubernetesVersion: '1.29.9'
     enableRBAC: true
     dnsPrefix: aks_dns_prefix
     nodeResourceGroup: aks_node_resource_group
@@ -117,7 +120,8 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
         maxCount: 5
         nodeTaints: ['CriticalAddonsOnly=true:NoSchedule']
         // vnetSubnetID: vnet_resource.properties.subnets[1].id
-        vnetSubnetID: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet_name, 'aks')
+        // vnetSubnetID: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet_name, 'aks')
+        vnetSubnetID: subnet_aks.id
       }
       {
         name: 'userpool'
@@ -130,7 +134,8 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
         minCount: aks_user_node_count
         maxCount: 10
         // vnetSubnetID: vnet_resource.properties.subnets[1].id
-        vnetSubnetID: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet_name, 'aks')
+        // vnetSubnetID: resourceId('Microsoft.Network/virtualNetworks/subnets', vnet_name, 'aks')
+        vnetSubnetID: subnet_aks.id
       }
     ]
     autoUpgradeProfile: {
@@ -191,35 +196,20 @@ resource identity_federated_credentials 'Microsoft.ManagedIdentity/userAssignedI
   }
 }
 
-resource keyvault_resource 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: keyvault_name
-  location: location
-  properties: {
-    tenantId: subscription().tenantId
-    enableRbacAuthorization: true
-    enableSoftDelete: false
-    sku: {
-      family: 'A'
-      name: keyvault_sku
-    }
+module aks_rg_role './aks-rg-role.bicep' = {
+  name: 'deploy-role-assignments-in-aks-rg'
+  // scope: resourceGroup()
+  params: {
+    project_name: project_name
   }
+  dependsOn: [aks_resource]
 }
 
-var keyvault_roles = [
-  '4633458b-17de-408a-b874-0445c86b69e6' //'Key Vault Secrets User'
-  '14b46e9e-c2b7-41b4-b07b-48a6ebf60603' //'Key Vault Crypto Officer'
-]
-
-resource keyvault_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
-  for role in keyvault_roles: {
-    name: guid(keyvault_resource.id, role, identity_resource.id)
-    scope: keyvault_resource
-    properties: {
-      roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', role)
-      principalId: identity_resource.properties.principalId
-      principalType: 'ServicePrincipal'
-    }
+module aks_node_rg_role './aks-rg-role.bicep' = {
+  name: 'deploy-role-assignments-in-aks-node-rg'
+  scope: resourceGroup(aks_node_resource_group)
+  params: {
+    project_name: project_name
   }
-]
-
-// output aks_node_resource_group string = aks_resource.properties.nodeResourceGroup
+  dependsOn: [aks_resource]
+}

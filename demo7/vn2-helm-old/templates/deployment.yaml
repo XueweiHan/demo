@@ -12,9 +12,8 @@ spec:
       {{- include "virtualnode2.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      annotations:
-        "kubernetes.azure.com/no-http-proxy-vars": "true"
       {{- with .Values.podAnnotations }}
+      annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
@@ -64,20 +63,48 @@ spec:
             - mountPath: /var/lib/kubelet/
               name: kubelet-root-dir
               mountPropagation: Bidirectional
-            - mountPath: /image-credential-provider/credential-provider-config.yaml
-              name: aks-credential-provider-yaml
-            - mountPath: /image-credential-provider/credential-provider
-              name: aks-credential-provider-binary
             - mountPath: /tmp/
               name: socket-volume
             - mountPath: /kubeconfig/
               name: kube-config-volume
-            - mountPath: /etc/kubernetes/azure.json
+            - mountPath: /etc/aks/azure.json
               name: aks-credential
             - mountPath: /etc/ssl/certs/ca-certificates.crt
               name: ca-certificates
             - mountPath: /var/log/pods
               name: container-logs
+          command:
+            - sh
+            - '-c'
+            - >-            
+              while [ ! -f /tmp/proxycriReady ]; do echo "waiting on proxyCri"; sleep 1; done;
+              mkdir -p /sys/fs/cgroup/$(NodeName);
+              mkdir -p /sys/fs/cgroup/cpuset/$(NodeName);
+              mkdir -p /sys/fs/cgroup/cpu,cpuacct/$(NodeName);
+              mkdir -p /sys/fs/cgroup/pids/$(NodeName);
+              mkdir -p /sys/fs/cgroup/memory/$(NodeName);
+              mkdir -p /sys/fs/cgroup/systemd/$(NodeName);
+              mkdir -p /sys/fs/cgroup/hugetlb/$(NodeName);
+              sleep 3;
+              /usr/local/bin/kubelet
+              --hostname-override=$(NodeName)
+              --kubeconfig=/kubeconfig/kubelet.conf
+              --azure-container-registry-config=/etc/aks/azure.json
+              --config=/kubeconfig/config.yaml
+              --authorization-mode=AlwaysAllow
+              --runtime-cgroups=$(NodeName)
+              --max-pods=200
+              --runtime-request-timeout=5m0s
+              --node-labels='microsoft.containerinstance.virtualnode=true,kubernetes.azure.com/managed=false,type=virtual-kubelet,virtualization=virtualnode2,microsoft.containerinstance.virtualnode.podname=$(NodeName),microsoft.containerinstance.virtualnode.podns=$(PodNS),{{ .Values.nodeLabels }}'
+              --register-with-taints='virtual-kubelet.io/provider=azure:NoSchedule'
+              --cgroup-root=$(NodeName)
+              --enforce-node-allocatable=
+              --cgroups-per-qos=false
+              --anonymous-auth=true
+              --node-ip=$(NodeIP)
+              --container-runtime-endpoint=/tmp/vcri.sock
+              --image-service-endpoint=/tmp/vcri.sock
+              --v=8
           env:
             - name: NodeIP
               valueFrom:
@@ -91,8 +118,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: CustomNodeLabels
-              value: {{ .Values.nodeLabels }}
           resources: {}
         - name: virtualcsi
           resources:
@@ -141,16 +166,6 @@ spec:
               mountPath: /var/log/pods
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
-          imagePullPolicy: {{ .Values.images.pullPolicy }}
-        - name: spdycompat
-          resources:
-            requests:
-              cpu: 0
-              memory: 0G
-            limits:
-              cpu: 3
-              memory: 12G
-          image: {{ .Values.images.spdycompatImage }}
           imagePullPolicy: {{ .Values.images.pullPolicy }}
         - name: proxycri
           resources:
@@ -209,8 +224,6 @@ spec:
               value: {{ quote .Values.standbyPool.zones }}
             - name: SandboxProviderType
               value: {{ .Values.sandboxProviderType }}
-            - name: VirtualNode_Zones
-              value: {{ quote .Values.zones }}
             - name: Subnets
               value: {{ .Values.aciSubnetName }}
             - name: AKS_CREDENTIAL_LOCATION
@@ -221,8 +234,6 @@ spec:
               value: {{ .Values.aciSubnetName }}
             - name: MountHostImage
               value: {{ .Values.images.mountImage }}
-            - name: ResourceGroup
-              value: {{ .Values.aciResourceGroupName }}
             - name: NodeName
               valueFrom:
                 fieldRef:
@@ -270,14 +281,6 @@ spec:
           hostPath:
             path: /etc/kubernetes/azure.json
             type: File
-        - name: aks-credential-provider-yaml
-          hostPath:
-            path: /var/lib/kubelet/credential-provider-config.yaml
-            type: FileOrCreate
-        - name: aks-credential-provider-binary
-          hostPath:
-            path: /var/lib/kubelet/credential-provider
-            type: DirectoryOrCreate         
         - name: credentials
           secret:
             secretName: virtual-node-admission-controller

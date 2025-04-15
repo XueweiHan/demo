@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-dpl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+        azure.workload.identity/use: 'true'
+      annotations:
+        microsoft.containerinstance.virtualnode.injectdns: 'false'
+        prometheus.io/path: /metrics
+        prometheus.io/port: '8081'
+        prometheus.io/scrape: 'true'
+    spec:
+      serviceAccountName: demo-sa
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: demo-app
+          image: huntersharedcr.azurecr.io/hunter-demo2:0.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-srv
+spec:
+  # type: LoadBalancer
+  type: ClusterIP
+  selector:
+    app: demo
+  ports:
+    - port: 80
+      targetPort: 8081

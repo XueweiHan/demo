@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo7-dpl
+  name: demo-dpl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: demo7
+      app: demo
   template:
     metadata:
       labels:
-        app: demo7
+        app: demo
         azure.workload.identity/use: 'true'
       annotations:
         microsoft.containerinstance.virtualnode.injectdns: 'false'
@@ -18,7 +18,7 @@ spec:
         prometheus.io/port: '8081'
         prometheus.io/scrape: 'true'
     spec:
-      serviceAccountName: demo7-sa
+      serviceAccountName: demo-sa
       nodeSelector:
         virtualization: virtualnode2
       tolerations:
@@ -26,8 +26,8 @@ spec:
           key: virtual-kubelet.io/provider
           operator: Exists
       containers:
-        - name: demo7-app
-          image: hunterdemo7cr.azurecr.io/hunter-demo7:0.1
+        - name: demo-app
+          image: __IMAGE__
           imagePullPolicy: Always
           ports:
             - containerPort: 8081
@@ -48,12 +48,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo7-srv
+  name: demo-srv
 spec:
   # type: LoadBalancer
   type: ClusterIP
   selector:
-    app: demo7
+    app: demo
   ports:
     - port: 80
       targetPort: 8081

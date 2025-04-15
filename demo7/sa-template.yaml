@@ -4,7 +4,7 @@ kind: ServiceAccount
 metadata:
   name: demo-sa
   annotations:
-    azure.workload.identity/client-id: ded01a04-0c86-4631-b513-9b822f1a6d5d
+    azure.workload.identity/client-id: __IDENTITY_CLIENT_ID__
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

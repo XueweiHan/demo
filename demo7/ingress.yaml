@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: demo7-ing
+  name: demo-ing
 spec:
   ingressClassName: webapprouting.kubernetes.azure.com
   rules:
@@ -11,7 +11,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: demo7-srv
+                name: demo-srv
                 port:
                   number: 80
           - path: /dotnet
@@ -32,6 +32,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: demo7-skr-srv
+                name: demo-skr-srv
                 port:
                   number: 80

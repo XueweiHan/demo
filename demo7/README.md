@@ -7,18 +7,23 @@ docker exec -it linuxbox /bin/bash
 az login
 az account set -s cd8a92db-a0c2-4273-816c-5149a1a1c5c9
 az configure --defaults location=eastus
-export name=hunter-demo7
 
-./deploy.sh
-or
-az deployment sub create --template-file demo-main.bicep --parameters "{\"project_name\":{\"value\":\"$name\"}}"
+export name=hunter-demo2
+
+./deploy_all.sh
+
+# XX --------------------
+# cd deployment
+# export name=hunter-demo3
+# az deployment sub create --template-file main.bicep --parameters "{\"project_name\":{\"value\":\"$name\"}}"
+# cd ..
 
 # old steps:
 # az group create -g $name-rg
 # az deployment group create -g $name-rg --template-file demo7.bicep --parameters "{\"project_name\":{\"value\":\"$name\"}}"
 ```
 
-# assign roles to aks agentpool (deprecated by the new deploy.sh/demo-main.bicep)
+# XX assign roles to aks agentpool (deprecated by the new demo-main.sh/demo-main.bicep)
 ```
 # assign acr pull role
 
@@ -41,7 +46,7 @@ az provider register -n Microsoft.ContainerInstance
 # https://github.com/azure-core-compute/VirtualNodesOnACI-1P
 helm install $name vn2-helm
 or
-helm template $name vn2-helm > vn2.yaml
+helm template aci vn2-helm > vn2.yaml
 kubectl apply -f vn2.yaml
 
 # check the vn2 running

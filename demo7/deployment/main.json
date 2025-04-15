@@ -1,0 +1,680 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.34.1.11899",
+      "templateHash": "13644315052664598141"
+    }
+  },
+  "parameters": {
+    "project_name": {
+      "type": "string",
+      "defaultValue": "hunter-demo"
+    },
+    "shared_name": {
+      "type": "string",
+      "defaultValue": "hunter-shared"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus"
+    }
+  },
+  "variables": {
+    "project": "[toLower(parameters('project_name'))]",
+    "shared": "[toLower(parameters('shared_name'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-share-rg",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "shared_name": {
+            "value": "[variables('shared')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.1.11899",
+              "templateHash": "6028070980285096359"
+            }
+          },
+          "parameters": {
+            "shared_name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "shared_resource_group": "[format('{0}-rg', parameters('shared_name'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Resources/resourceGroups",
+              "apiVersion": "2024-11-01",
+              "name": "[variables('shared_resource_group')]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "deploy-acr",
+              "resourceGroup": "[variables('shared_resource_group')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "shared_name": {
+                    "value": "[parameters('shared_name')]"
+                  },
+                  "location": {
+                    "value": "[parameters('location')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.34.1.11899",
+                      "templateHash": "13296106173406654720"
+                    }
+                  },
+                  "parameters": {
+                    "shared_name": {
+                      "type": "string"
+                    },
+                    "location": {
+                      "type": "string",
+                      "defaultValue": "[resourceGroup().location]"
+                    }
+                  },
+                  "variables": {
+                    "container_registry_name": "[replace(format('{0}cr', parameters('shared_name')), '-', '')]",
+                    "keyvault_name": "[format('{0}-keyvault', parameters('shared_name'))]",
+                    "log_analytics_workspace_name": "[format('{0}-log-analytics-workspace', parameters('shared_name'))]",
+                    "service_bus_namespace_name": "[format('{0}-service-bus', parameters('shared_name'))]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.ContainerRegistry/registries",
+                      "apiVersion": "2023-07-01",
+                      "name": "[variables('container_registry_name')]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "adminUserEnabled": false
+                      },
+                      "sku": {
+                        "name": "Premium"
+                      }
+                    },
+                    {
+                      "type": "Microsoft.KeyVault/vaults",
+                      "apiVersion": "2023-07-01",
+                      "name": "[variables('keyvault_name')]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "tenantId": "[subscription().tenantId]",
+                        "enableRbacAuthorization": true,
+                        "enableSoftDelete": false,
+                        "sku": {
+                          "family": "A",
+                          "name": "premium"
+                        }
+                      }
+                    },
+                    {
+                      "type": "Microsoft.OperationalInsights/workspaces",
+                      "apiVersion": "2023-09-01",
+                      "name": "[variables('log_analytics_workspace_name')]",
+                      "location": "[parameters('location')]"
+                    },
+                    {
+                      "type": "Microsoft.ServiceBus/namespaces",
+                      "apiVersion": "2024-01-01",
+                      "name": "[variables('service_bus_namespace_name')]",
+                      "location": "[parameters('location')]",
+                      "sku": {
+                        "name": "Standard"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('shared_resource_group'))]"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-aks-rg",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "project_name": {
+            "value": "[variables('project')]"
+          },
+          "shared_name": {
+            "value": "[variables('shared')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.1.11899",
+              "templateHash": "13403719671766553458"
+            }
+          },
+          "parameters": {
+            "project_name": {
+              "type": "string"
+            },
+            "shared_name": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            }
+          },
+          "variables": {
+            "aks_resource_group": "[format('{0}-rg', parameters('project_name'))]",
+            "shared_resource_group": "[format('{0}-rg', parameters('shared_name'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Resources/resourceGroups",
+              "apiVersion": "2024-11-01",
+              "name": "[variables('aks_resource_group')]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "deploy-aks-resources",
+              "resourceGroup": "[variables('aks_resource_group')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "project_name": {
+                    "value": "[parameters('project_name')]"
+                  },
+                  "location": {
+                    "value": "[parameters('location')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.34.1.11899",
+                      "templateHash": "2370841809854376502"
+                    }
+                  },
+                  "parameters": {
+                    "project_name": {
+                      "type": "string"
+                    },
+                    "location": {
+                      "type": "string",
+                      "defaultValue": "[resourceGroup().location]"
+                    }
+                  },
+                  "variables": {
+                    "aks_tier": "Standard",
+                    "aks_vmsize": "Standard_D3",
+                    "aks_system_node_count": 2,
+                    "aks_user_node_count": 2,
+                    "public_ip_name": "[format('{0}-public-ip', parameters('project_name'))]",
+                    "nat_gateway_name": "[format('{0}-nat-gateway', parameters('project_name'))]",
+                    "vnet_name": "[format('{0}-vnet', parameters('project_name'))]",
+                    "aks_name": "[format('{0}-aks', parameters('project_name'))]",
+                    "aks_node_resource_group": "[format('{0}-node-rg', variables('aks_name'))]",
+                    "aks_dns_prefix": "[format('{0}-dns-prefix', parameters('project_name'))]",
+                    "identity_name": "[format('{0}-identity', parameters('project_name'))]",
+                    "identity_federated_credentials_name": "[format('{0}-service-account-credentials', parameters('project_name'))]",
+                    "aks_service_account_name": "demo-sa"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/publicIPAddresses",
+                      "apiVersion": "2024-01-01",
+                      "name": "[variables('public_ip_name')]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "publicIPAllocationMethod": "Static",
+                        "publicIPAddressVersion": "IPv4"
+                      },
+                      "sku": {
+                        "name": "Standard"
+                      }
+                    },
+                    {
+                      "type": "Microsoft.Network/natGateways",
+                      "apiVersion": "2024-01-01",
+                      "name": "[variables('nat_gateway_name')]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "idleTimeoutInMinutes": 10,
+                        "publicIpAddresses": [
+                          {
+                            "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('public_ip_name'))]"
+                          }
+                        ]
+                      },
+                      "sku": {
+                        "name": "Standard"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/publicIPAddresses', variables('public_ip_name'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/virtualNetworks",
+                      "apiVersion": "2024-01-01",
+                      "name": "[variables('vnet_name')]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "addressSpace": {
+                          "addressPrefixes": [
+                            "10.0.0.0/16",
+                            "10.1.0.0/16",
+                            "10.2.0.0/16"
+                          ]
+                        },
+                        "subnets": [
+                          {
+                            "name": "default",
+                            "properties": {
+                              "addressPrefix": "10.0.0.0/24",
+                              "defaultOutboundAccess": false
+                            }
+                          },
+                          {
+                            "name": "aks",
+                            "properties": {
+                              "addressPrefix": "10.1.0.0/16",
+                              "defaultOutboundAccess": false
+                            }
+                          },
+                          {
+                            "name": "cg",
+                            "properties": {
+                              "addressPrefix": "10.2.0.0/16",
+                              "defaultOutboundAccess": false,
+                              "natGateway": {
+                                "id": "[resourceId('Microsoft.Network/natGateways', variables('nat_gateway_name'))]"
+                              },
+                              "delegations": [
+                                {
+                                  "name": "containerGroups",
+                                  "properties": {
+                                    "serviceName": "Microsoft.ContainerInstance/containerGroups"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/natGateways', variables('nat_gateway_name'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.ContainerService/managedClusters",
+                      "apiVersion": "2024-07-01",
+                      "name": "[variables('aks_name')]",
+                      "location": "[parameters('location')]",
+                      "properties": {
+                        "kubernetesVersion": "1.29.9",
+                        "enableRBAC": true,
+                        "dnsPrefix": "[variables('aks_dns_prefix')]",
+                        "nodeResourceGroup": "[variables('aks_node_resource_group')]",
+                        "agentPoolProfiles": [
+                          {
+                            "name": "agentpool",
+                            "mode": "System",
+                            "vmSize": "[variables('aks_vmsize')]",
+                            "osType": "Linux",
+                            "osSKU": "AzureLinux",
+                            "enableAutoScaling": true,
+                            "count": "[variables('aks_system_node_count')]",
+                            "minCount": "[variables('aks_system_node_count')]",
+                            "maxCount": 5,
+                            "nodeTaints": [
+                              "CriticalAddonsOnly=true:NoSchedule"
+                            ],
+                            "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnet_name'), 'aks')]"
+                          },
+                          {
+                            "name": "userpool",
+                            "mode": "User",
+                            "vmSize": "[variables('aks_vmsize')]",
+                            "osType": "Linux",
+                            "osSKU": "AzureLinux",
+                            "enableAutoScaling": true,
+                            "count": "[variables('aks_user_node_count')]",
+                            "minCount": "[variables('aks_user_node_count')]",
+                            "maxCount": 10,
+                            "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnet_name'), 'aks')]"
+                          }
+                        ],
+                        "autoUpgradeProfile": {
+                          "upgradeChannel": "patch"
+                        },
+                        "networkProfile": {
+                          "networkPlugin": "azure",
+                          "networkPolicy": "calico",
+                          "serviceCidr": "10.4.0.0/16",
+                          "dnsServiceIP": "10.4.0.10"
+                        },
+                        "ingressProfile": {
+                          "webAppRouting": {
+                            "enabled": true
+                          }
+                        },
+                        "securityProfile": {
+                          "workloadIdentity": {
+                            "enabled": true
+                          }
+                        },
+                        "oidcIssuerProfile": {
+                          "enabled": true
+                        },
+                        "servicePrincipalProfile": {
+                          "clientId": "msi"
+                        },
+                        "workloadAutoScalerProfile": {
+                          "keda": {
+                            "enabled": true
+                          }
+                        }
+                      },
+                      "sku": {
+                        "name": "Base",
+                        "tier": "[variables('aks_tier')]"
+                      },
+                      "identity": {
+                        "type": "SystemAssigned"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnet_name'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+                      "apiVersion": "2023-01-31",
+                      "name": "[variables('identity_name')]",
+                      "location": "[parameters('location')]"
+                    },
+                    {
+                      "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+                      "apiVersion": "2023-01-31",
+                      "name": "[format('{0}/{1}', variables('identity_name'), variables('identity_federated_credentials_name'))]",
+                      "properties": {
+                        "issuer": "[reference(resourceId('Microsoft.ContainerService/managedClusters', variables('aks_name')), '2024-07-01').oidcIssuerProfile.issuerURL]",
+                        "subject": "[format('system:serviceaccount:default:{0}', variables('aks_service_account_name'))]",
+                        "audiences": [
+                          "api://AzureADTokenExchange"
+                        ]
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.ContainerService/managedClusters', variables('aks_name'))]",
+                        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('identity_name'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Resources/deployments",
+                      "apiVersion": "2022-09-01",
+                      "name": "deploy-role-assignments-in-aks-rg",
+                      "properties": {
+                        "expressionEvaluationOptions": {
+                          "scope": "inner"
+                        },
+                        "mode": "Incremental",
+                        "parameters": {
+                          "project_name": {
+                            "value": "[parameters('project_name')]"
+                          }
+                        },
+                        "template": {
+                          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                          "contentVersion": "1.0.0.0",
+                          "metadata": {
+                            "_generator": {
+                              "name": "bicep",
+                              "version": "0.34.1.11899",
+                              "templateHash": "13297818999001537203"
+                            }
+                          },
+                          "parameters": {
+                            "project_name": {
+                              "type": "string"
+                            }
+                          },
+                          "variables": {
+                            "aks_name": "[format('{0}-aks', parameters('project_name'))]",
+                            "aks_node_resource_group": "[format('{0}-node-rg', variables('aks_name'))]",
+                            "aks_nodepool_identity": "[format('{0}-agentpool', variables('aks_name'))]",
+                            "ContributorRoleId": "b24988ac-6180-42a0-ab88-20f7382dd24c"
+                          },
+                          "resources": [
+                            {
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "name": "[guid(resourceGroup().id, 'Contributor', resourceId(variables('aks_node_resource_group'), 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('aks_nodepool_identity')))]",
+                              "properties": {
+                                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ContributorRoleId'))]",
+                                "principalId": "[reference(resourceId(variables('aks_node_resource_group'), 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('aks_nodepool_identity')), '2023-01-31').principalId]",
+                                "principalType": "ServicePrincipal"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.ContainerService/managedClusters', variables('aks_name'))]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Resources/deployments",
+                      "apiVersion": "2022-09-01",
+                      "name": "deploy-role-assignments-in-aks-node-rg",
+                      "resourceGroup": "[variables('aks_node_resource_group')]",
+                      "properties": {
+                        "expressionEvaluationOptions": {
+                          "scope": "inner"
+                        },
+                        "mode": "Incremental",
+                        "parameters": {
+                          "project_name": {
+                            "value": "[parameters('project_name')]"
+                          }
+                        },
+                        "template": {
+                          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                          "contentVersion": "1.0.0.0",
+                          "metadata": {
+                            "_generator": {
+                              "name": "bicep",
+                              "version": "0.34.1.11899",
+                              "templateHash": "13297818999001537203"
+                            }
+                          },
+                          "parameters": {
+                            "project_name": {
+                              "type": "string"
+                            }
+                          },
+                          "variables": {
+                            "aks_name": "[format('{0}-aks', parameters('project_name'))]",
+                            "aks_node_resource_group": "[format('{0}-node-rg', variables('aks_name'))]",
+                            "aks_nodepool_identity": "[format('{0}-agentpool', variables('aks_name'))]",
+                            "ContributorRoleId": "b24988ac-6180-42a0-ab88-20f7382dd24c"
+                          },
+                          "resources": [
+                            {
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "name": "[guid(resourceGroup().id, 'Contributor', resourceId(variables('aks_node_resource_group'), 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('aks_nodepool_identity')))]",
+                              "properties": {
+                                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('ContributorRoleId'))]",
+                                "principalId": "[reference(resourceId(variables('aks_node_resource_group'), 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('aks_nodepool_identity')), '2023-01-31').principalId]",
+                                "principalType": "ServicePrincipal"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.ContainerService/managedClusters', variables('aks_name'))]"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('aks_resource_group'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "deploy-role-assignments-in-shared-rg",
+              "resourceGroup": "[variables('shared_resource_group')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "project_name": {
+                    "value": "[parameters('project_name')]"
+                  },
+                  "shared_name": {
+                    "value": "[parameters('shared_name')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.34.1.11899",
+                      "templateHash": "15483588595911171017"
+                    }
+                  },
+                  "parameters": {
+                    "shared_name": {
+                      "type": "string"
+                    },
+                    "project_name": {
+                      "type": "string"
+                    }
+                  },
+                  "variables": {
+                    "container_registry_name": "[replace(format('{0}cr', parameters('shared_name')), '-', '')]",
+                    "keyvault_name": "[format('{0}-keyvault', parameters('shared_name'))]",
+                    "aks_name": "[format('{0}-aks', parameters('project_name'))]",
+                    "aks_resource_group": "[format('{0}-rg', parameters('project_name'))]",
+                    "aks_node_resource_group": "[format('{0}-node-rg', variables('aks_name'))]",
+                    "identity_name": "[format('{0}-identity', parameters('project_name'))]",
+                    "aks_nodepool_identity_resource_id": "[resourceId(variables('aks_node_resource_group'), 'Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-agentpool', variables('aks_name')))]",
+                    "acr_roles": [
+                      "7f951dda-4ed3-4680-a7ca-43fe172d538d"
+                    ],
+                    "identity_resource_id": "[resourceId(variables('aks_resource_group'), 'Microsoft.ManagedIdentity/userAssignedIdentities', variables('identity_name'))]",
+                    "keyvault_roles": [
+                      "4633458b-17de-408a-b874-0445c86b69e6",
+                      "14b46e9e-c2b7-41b4-b07b-48a6ebf60603"
+                    ]
+                  },
+                  "resources": [
+                    {
+                      "copy": {
+                        "name": "arc_pull_role_assignment",
+                        "count": "[length(variables('acr_roles'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.ContainerRegistry/registries/{0}', variables('container_registry_name'))]",
+                      "name": "[guid(resourceId('Microsoft.ContainerRegistry/registries', variables('container_registry_name')), variables('acr_roles')[copyIndex()], variables('aks_nodepool_identity_resource_id'))]",
+                      "properties": {
+                        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('acr_roles')[copyIndex()])]",
+                        "principalId": "[reference(variables('aks_nodepool_identity_resource_id'), '2023-01-31').principalId]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    },
+                    {
+                      "copy": {
+                        "name": "keyvault_role_assignment",
+                        "count": "[length(variables('keyvault_roles'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.KeyVault/vaults/{0}', variables('keyvault_name'))]",
+                      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('keyvault_name')), variables('keyvault_roles')[copyIndex()], variables('identity_resource_id'))]",
+                      "properties": {
+                        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('keyvault_roles')[copyIndex()])]",
+                        "principalId": "[reference(variables('identity_resource_id'), '2023-01-31').principalId]",
+                        "principalType": "ServicePrincipal"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('aks_resource_group')), 'Microsoft.Resources/deployments', 'deploy-aks-resources')]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-share-rg')]"
+      ]
+    }
+  ]
+}

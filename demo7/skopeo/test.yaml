@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: skopeo-dpl
+spec:
+  selector:
+    matchLabels:
+      app: skopeo
+  template:
+    metadata:
+      labels:
+        app: skopeo
+      annotations:
+        microsoft.containerinstance.virtualnode.injectdns: 'false'
+    spec:
+      containers:
+        - name: skopeo
+          image: huntersharedcr.azurecr.io/test:ubuntu2204
+          command: ["sleep", "infinity"]
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+      - effect: NoSchedule
+        key: virtual-kubelet.io/provider
+        operator: Exists

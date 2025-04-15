@@ -1,0 +1,239 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-test0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log
+  template:
+    metadata:
+      labels:
+        app: log
+        watch: log-watcher0
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: log
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          command: ["sh", "-c"]
+          args:
+            - |
+              trap 'exit' TERM
+              i=0
+              while true; do
+                echo "$(date +'%Y-%m-%d %H:%M:%S') --- $i --- VN2"
+                i=$((i+1))
+              done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-test1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log
+  template:
+    metadata:
+      labels:
+        app: log
+        watch: log-watcher1
+    spec:
+      restartPolicy: Always
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: log
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          command: ["sh", "-c"]
+          args:
+            - |
+              trap 'exit' TERM
+              i=0
+              while true; do
+                echo "$(date +'%Y-%m-%d %H:%M:%S') --- $i --- VN2"
+                i=$((i+1))
+              done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-test2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log
+  template:
+    metadata:
+      labels:
+        app: log
+        watch: log-watcher2
+    spec:
+      restartPolicy: Always
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: log
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          command: ["sh", "-c"]
+          args:
+            - |
+              trap 'exit' TERM
+              i=0
+              while true; do
+                echo "$(date +'%Y-%m-%d %H:%M:%S') --- $i --- VN2"
+                i=$((i+1))
+              done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-test3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log
+  template:
+    metadata:
+      labels:
+        app: log
+        watch: log-watcher3
+    spec:
+      restartPolicy: Always
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: log
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          command: ["sh", "-c"]
+          args:
+            - |
+              trap 'kill 0' TERM
+              i=0
+              while true; do
+                echo "$(date +'%Y-%m-%d %H:%M:%S') --- $i --- VN2"
+                i=$((i+1))
+              done
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-editor
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: pod-editor-sa
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pod-editor-sa
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logs-watcher
+spec:
+  selector:
+    matchLabels:
+      app: logs-watcher
+  template:
+    metadata:
+      labels:
+        app: logs-watcher
+    spec:
+      serviceAccountName: pod-editor-sa
+      restartPolicy: Always
+      containers:
+        - name: logs-watcher
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          command: ["sh", "-c"]
+          args:
+            - |
+              # install kubectl
+              wget -O /bin/kubectl https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl 2>/dev/null
+              chmod +x /bin/kubectl
+
+              trap 'kill 0' TERM INT
+
+              apps="log-watcher0 log-watcher1 log-watcher2 log-watcher3"
+
+              for app in $apps; do
+                (
+                  log=$app.log
+
+                  while true; do
+
+                    # Wait up to 5 minutes for the pod to become ready
+                    kubectl wait --for=condition=ready pod -l watch=$app --timeout=5m >/dev/null
+
+                    # Save the pod logs to $log in background
+                    rm -f $log
+                    kubectl logs --tail=1 -l watch=$app > $log 2>/dev/null &
+                    kubectlPID=$!
+
+                    # Sleep for 5 seconds
+                    sleep 5
+
+                    # Check if the 'kubectl logs' is still running, kill it
+                    if ps -p $kubectlPID >/dev/null 2>&1; then
+                      kill $kubectlPID
+                    fi
+
+                    # Check if the log file is empty
+                    if [ ! -s $log ]; then
+                      echo "$(date +'%Y-%m-%d %H:%M:%S') $app: pod logs are STOPPED"
+
+                      # Delete the pod, let it restart
+                      kubectl delete pod -l watch=$app
+                    else
+                      echo "$(date +'%Y-%m-%d %H:%M:%S') $app: pod logs are running"
+                    fi
+
+                  done
+                ) &
+              done
+
+              wait

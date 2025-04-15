@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azurite-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azurite-test
+  template:
+    metadata:
+      labels:
+        app: azurite-test
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: azurite-test
+          image: ptmsdev/test
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: 500m
+          # command: ["bash", "-c"]
+          # args:
+          #   - |
+          #     while ! $(nc -z localhost 10000); do
+          #       echo "$(date +'%Y-%m-%d %H:%M:%S') Port 10000 is not serving"
+          #       read -t 0.1
+          #     done
+
+          #     echo "$(date +'%Y-%m-%d %H:%M:%S') Port 10000 is serving"
+
+          #     sleep infinity
+              
+        - name: azurite
+          image: mcr.microsoft.com/azure-storage/azurite:3.31.0
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: azurite-data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 1024Mi
+              cpu: 500m
+      volumes:
+        - name: azurite-data
+          emptyDir: {}

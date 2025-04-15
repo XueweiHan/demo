@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: log-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-view-crb
+  namespace: log-test
+subjects:
+  - kind: ServiceAccount
+    name: k8s-view
+    namespace: log-test
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-view
+  namespace: log-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-follow-pn-dpl
+  namespace: log-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-follow-pn
+  template:
+    metadata:
+      labels:
+        app: log-follow-pn
+    spec:
+      serviceAccountName: k8s-view
+      restartPolicy: Always
+      containers:
+        - name: log-follow
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          # image: mcr.microsoft.com/azure-functions/dotnet:4
+          # image: mcr.microsoft.com/azure-cli:cbl-mariner2.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          command: ["sh", "-c"]
+          args:
+            - |
+              # install kubectl
+              wget -O /bin/kubectl https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl 2>/dev/null
+              chmod +x /bin/kubectl
+
+              export app=log-writer-vn2
+
+              # Wait until the pod labeled app=log-writer-vn2 reaches the Running state.
+              kubectl wait --for=condition=ready pod -l app=$app --timeout=300s >/dev/null
+
+              # Forward the logs from the vn2 pod to this AKS pod so that Container Insights can record them in the ContainerLogV2 table.
+              kubectl logs --tail=1000 --since=1m -f -l app=$app
+
+              while true; do
+                # If `kubectl logs` times out due to inactivity for an extended period, restart it with less --since time.
+                kubectl logs --tail=1000 --since=1s -f -l app=$app
+              done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-writer-vn2-dpl
+  namespace: log-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-writer-vn2
+  template:
+    metadata:
+      labels:
+        app: log-writer-vn2
+    spec:
+      nodeSelector:
+        virtualization: virtualnode2
+      tolerations:
+        - effect: NoSchedule
+          key: virtual-kubelet.io/provider
+          operator: Exists
+      containers:
+        - name: log-writer
+          image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          command: ["sh", "-c"]
+          args:
+            - |
+              i=0
+              while true; do
+                echo "$(date +'%Y-%m-%d %H:%M:%S') --- $i --- VN2"
+                i=$((i+1))
+                sleep 5
+              done
+        - name: azurite
+          image: mcr.microsoft.com/azure-storage/azurite:3.33.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"

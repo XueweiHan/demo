@@ -1,16 +1,19 @@
-param project_name string = 'demo7'
-
-param aks_name string = toLower('${project_name}-aks')
+param project_name string = 'hunter-demo'
+param shared_name string = 'hunter-shared'
 param location string = resourceGroup().location
 
-param log_analytics_workspace_name string = toLower('${project_name}-log-analytics-workspace')
+var shared_resource_group = '${shared_name}-rg'
+var log_analytics_workspace_name = '${shared_name}-log-analytics-workspace'
 
-resource log_analytics_workspace_resource 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
-  name: log_analytics_workspace_name
-  location: location
-}
+var log_analytics_workspace_id = resourceId(
+  shared_resource_group,
+  'Microsoft.OperationalInsights/workspaces',
+  log_analytics_workspace_name
+)
 
-resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = {
+var aks_name = '${project_name}-aks'
+
+resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-10-01' = {
   location: location
   name: aks_name
   properties: {
@@ -18,7 +21,7 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
       omsagent: {
         enabled: true
         config: {
-          logAnalyticsWorkspaceResourceID: log_analytics_workspace_resource.id
+          logAnalyticsWorkspaceResourceID: log_analytics_workspace_id
         }
       }
     }
