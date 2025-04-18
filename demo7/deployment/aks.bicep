@@ -168,6 +168,15 @@ resource aks_resource 'Microsoft.ContainerService/managedClusters@2024-07-01' = 
         enabled: true
       }
     }
+    addonProfiles: {
+      azureKeyvaultSecretsProvider: {
+        enabled: true
+        config: {
+          enableSecretRotation: 'true'
+          rotationPollInterval: '2m'
+        }
+      }
+    }
   }
   sku: {
     name: 'Base'

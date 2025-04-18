@@ -3,6 +3,8 @@ set -e
 
 # Get the YAML file name
 yaml_file="$1"
+# Get the tarball name
+tarball="$2"
 
 # Clean up the split parts
 rm -f xx*
@@ -16,18 +18,19 @@ csplit -s -z "$yaml_file" '/^---$/' '{*}'
 for part in xx*; do
 
   kind_line=$(grep '^kind:' "$part")
+  name_line=$(grep '^\s\+name:' "$part" | head -n 1)
   if ! grep -q 'virtualnode2' "$part"; then
-    echo "Skipping: $kind_line"
+    echo -e "\033[90mSkipping: $kind_line $name_line\033[0m"
     continue
   fi
-  echo "Processing: $kind_line"
+  echo -e "\033[92mProcessing: $kind_line $name_line\033[0m"
 
   echo -e "\033[36mUpdating empty values in the YAML file...\033[0m"
   sed -i 's/^\(\s*value:\s\)$/\1""/g' "$part"
 
   echo -e "\033[36mGenerating the virtual node confidential container policy...\033[0m"
-  # az confcom acipolicygen --virtual-node-yaml "$part" --print-policy | base64 -d | sha256sum | cut -d' ' -f1
-  az confcom acipolicygen -y --virtual-node-yaml "$part"
+  # az confcom acipolicygen -y --virtual-node-yaml "$part" --print-policy | base64 -d | sha256sum | cut -d' ' -f1
+  az confcom acipolicygen -y --virtual-node-yaml "$part" ${tarball:+--tar $tarball}
 
   # Read all content from the YAML file
   content=$(cat "$part")
@@ -118,9 +121,9 @@ done
 
 # Merge the processed parts back into a new file
 new_file="${yaml_file%.yaml}-cc.yaml"
-cat xx* > "$new_file"
+cat xx* >"$new_file"
 
 # Clean up the split parts
 rm xx*
 
-echo -e "\033[36mDone!\033[0m"
+echo -e "\033[42;30mDone!\033[0m"
