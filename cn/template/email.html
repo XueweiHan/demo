@@ -1,0 +1,47 @@
+<html>
+
+<head>
+    <title>CertNoti v3</title>
+    <style>
+        h1 {
+            text-align: center;
+        }
+
+        td,
+        th {
+            border: 1px solid black;
+            padding: 4px;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Expiring Certificates</h1>
+    <h3><a href="https://remopartest.azurewebsites.net/api/cert?format=html">check details</a></h3>
+    <table>
+        <tbody>
+            <tr>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Expiration</th>
+                <th>Owner</th>
+                <th>Thumbprint</th>
+            </tr>
+            {{ range . }}
+            <tr>
+                <td>{{ .SecretName}}</td>
+                <td>{{ .SecretVersion }}</td>
+                <td>{{ .ValidTo.Format "Jan 02, 2006 15:04:05 UTC" }}</td>
+                <td>{{ .IcmTeamName }}</td>
+                <td>{{ .ThumbprintSHA1 }}</td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+</body>
+
+</html>

@@ -1,0 +1,90 @@
+# kubernetes specific configurations
+
+# certnoti namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: certnoti-ns
+
+---
+# service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    azure.workload.identity/use: "true"
+  name: certnoti-sa
+  namespace: certnoti-ns
+---
+
+# certnoti deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: certnoti-depl
+  namespace: certnoti-ns
+  labels:
+    app: certnoti
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: certnoti
+  template:
+    metadata:
+      labels:
+        app: certnoti
+    spec:
+      serviceAccountName: certnoti-sa
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: certnoti
+        image: torus1eshp.azurecr.io/unofficial/certnoti:__IMAGE_TAG__
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ExpiringCertScanTimeTrigger
+          value: "0 3 * * *"
+        - name: AZURE_CLIENT_ID
+          value: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx # TODO: where is our client id?
+
+---
+# certnoti service
+apiVersion: v1
+kind: Service
+metadata:
+  name: certnoti-srv
+  namespace: certnoti-ns
+spec:
+  selector:
+    app: certnoti
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+
+---
+# certnoti ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: certnoti-ing
+  namespace: certnoti-ns
+spec:
+  rules:
+  - host: certnoti.com # TODO: where is our domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: certnoti-srv
+            port:
+              number: 80
+
+# Do we have ingress controller (k8s Nginx Ingress Controller)
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.44.0/deploy/static/provider/cloud/deploy.yaml
+# In azure AKS, we need setup cloud load balancer, and external request will hit the load balancer,
+# then forward to the ingress controller, then forward to our services

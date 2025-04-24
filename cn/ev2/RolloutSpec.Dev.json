@@ -1,0 +1,49 @@
+{
+  "$schema": "https://ev2schema.azure.net/schemas/2020-01-01/rolloutSpecification.json",
+  "rolloutMetadata": {
+    "serviceModelPath": "ServiceModel.json",
+    "name": "TorusAzure.CertNoti.Dev",
+    "rolloutType": "Major",
+    "buildSource": {
+      "parameters": {
+        "versionFile": "buildver.txt"
+      }
+    },
+    "notification": {
+      "email": {
+        "to": "hunter.han@microsoft.com"
+      }
+    }
+  },
+  "orchestratedsteps": [
+    {
+      "name": "CertNoti-Infra",
+      "targetType": "ServiceResource",
+      "targetName": "TorusAzure.CertNoti.ServiceResource.Dev",
+      "actions": [
+        "Deploy"
+      ]
+    },
+    {
+      "name": "certnoti-provision",
+      "dependsOn": [
+        "CertNoti-Infra"
+      ],
+      "targetType": "application",
+      "applications": {
+        "names": [
+          "certnoti"
+        ],
+        "actions": [
+          "AppDeploy"
+        ],
+        "applyAcrossServiceResources": {
+          "definitionName": "CertNoti-Dev",
+          "names": [
+            "TorusAzure.CertNoti.ServiceResource.Dev"
+          ]
+        }
+      }
+    }
+  ]
+}

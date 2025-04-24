@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: certnoti-sa
+  annotations:
+    azure.workload.identity/client-id: 31baa029-02f1-49d4-8685-431c701eb276
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: certnoti-depl
+  labels:
+    app: certnoti
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: certnoti
+  template:
+    metadata:
+      labels:
+        app: certnoti
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: certnoti-sa
+      runtimeClassName: kata-cc-isolation
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: certnoti
+        image: torusacr.azurecr.io/unofficial/certnoti:__IMAGE_TAG__
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ExpiringCertScanTimeTrigger
+          value: "0 3 * * *"
+        - name: KEYVAULT_NAME
+          value: huntercc-ccaks-kv
+        - name: SECRET_NAME
+          value: my-secret
+        - name: SKR_KEY_ID
+          value: demo1-encryption-key
+        - name: SKR_MMA_ENDPOINT
+          value: hunterccap.eus.attest.azure.net
+      - name: skr
+        image: "mcr.microsoft.com/aci/skr:2.7"
+        imagePullPolicy: Always
+        env:
+        - name: SkrSideCarArgs
+          value: ewogICAgImNlcnRjYWNoZSI6IHsKCQkiZW5kcG9pbnRfdHlwZSI6ICJMb2NhbFRISU0iLAoJCSJlbmRwb2ludCI6ICIxNjkuMjU0LjE2OS4yNTQvbWV0YWRhdGEvVEhJTS9hbWQvY2VydGlmaWNhdGlvbiIKCX0gIAp9
+        command:
+        - /bin/skr
+        volumeMounts:
+        - mountPath: /opt/confidential-containers/share/kata-containers/reference-info-base64
+          name: endorsement-location
+      volumes:
+        - name: endorsement-location
+          hostPath:
+            path: /opt/confidential-containers/share/kata-containers/reference-info-base64
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: certnoti-srv
+spec:
+  type: LoadBalancer
+  selector:
+    app: certnoti
+  ports:
+  - port: 80
+    targetPort: 8000

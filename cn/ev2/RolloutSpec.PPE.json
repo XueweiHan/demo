@@ -1,0 +1,49 @@
+{
+  "$schema": "https://ev2schema.azure.net/schemas/2020-01-01/rolloutSpecification.json",
+  "rolloutMetadata": {
+    "serviceModelPath": "ServiceModel.json",
+    "name": "TorusAzure.CertNoti.PPE",
+    "rolloutType": "Major",
+    "buildSource": {
+      "parameters": {
+        "versionFile": "buildver.txt"
+      }
+    },
+    "notification": {
+      "email": {
+        "to": "hunter.han@microsoft.com"
+      }
+    }
+  },
+  "orchestratedsteps": [
+    {
+      "name": "CertNoti-Infra",
+      "targetType": "ServiceResource",
+      "targetName": "TorusAzure.CertNoti.ServiceResource.PPE",
+      "actions": [
+        "Deploy"
+      ]
+    },
+    {
+      "name": "certnoti-provision",
+      "dependsOn": [
+        "CertNoti-Infra"
+      ],
+      "targetType": "application",
+      "applications": {
+        "names": [
+          "certnoti"
+        ],
+        "actions": [
+          "AppDeploy"
+        ],
+        "applyAcrossServiceResources": {
+          "definitionName": "CertNoti-PPE",
+          "names": [
+            "TorusAzure.CertNoti.ServiceResource.PPE"
+          ]
+        }
+      }
+    }
+  ]
+}

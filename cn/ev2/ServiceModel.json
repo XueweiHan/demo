@@ -1,0 +1,117 @@
+{
+  "$schema": "https://ev2schema.azure.net/schemas/2020-01-01/serviceModel.json",
+  "serviceMetadata": {
+    "serviceGroup": "M365 Security Engineering",
+    "environment": "test"
+  },
+  "applicationDefinitions": [
+    {
+      "name": "app-def-dev",
+      "rollBackOnFailure": true,
+      "azureKubernetesService": {
+        "namespace": "default",
+        "specPath": "manifests\\dev.yaml",
+        "tools": {
+          "kubectl": {
+            "version": "1.26.10"
+          }
+        }
+      }
+    },
+    {
+      "name": "app-def-ppe",
+      "rollBackOnFailure": true,
+      "azureKubernetesService": {
+        "namespace": "default",
+        "specPath": "manifests\\ppe.yaml",
+        "tools": {
+          "kubectl": {
+            "version": "1.26.10"
+          }
+        }
+      }
+    }
+  ],
+  "serviceResourceGroupDefinitions": [
+    {
+      "name": "TorusAzure.CertNoti.ResourceGroup.Dev.Def",
+      "serviceResourceDefinitions": [
+        {
+          "name": "CertNoti-Dev",
+          "composedOf": {
+            "arm": {
+              "templatePath": "Templates\\template.json"
+            },
+            "application": {
+              "names": [
+                "app-def-dev"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "TorusAzure.CertNoti.ResourceGroup.PPE.Def",
+      "serviceResourceDefinitions": [
+        {
+          "name": "CertNoti-PPE",
+          "composedOf": {
+            "arm": {
+              "templatePath": "Templates\\template.json"
+            },
+            "application": {
+              "names": [
+                "app-def-ppe"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "serviceResourceGroups": [
+    {
+      "azureResourceGroupName": "certnoti-dev-rg",
+      "location": "East US",
+      "instanceOf": "TorusAzure.CertNoti.ResourceGroup.Dev.Def",
+      "azureSubscriptionId": "b47beaaf-7461-4b34-844a-7105d6b8c0d7",
+      "serviceResources": [
+        {
+          "name": "TorusAzure.CertNoti.ServiceResource.Dev",
+          "instanceOf": "CertNoti-Dev",
+          "armParametersPath": "Parameters\\parameters.dev.json",
+          "rolloutParametersPath": "parameters\\rolloutParameters.dev.json",
+          "applications": [
+            {
+              "name": "certnoti",
+              "instanceOf": "app-def-dev",
+              "armResourceName": "certnoti-dev-aks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "azureResourceGroupName": "certnoti-ppe-rg",
+      "location": "East US",
+      "instanceOf": "TorusAzure.CertNoti.ResourceGroup.PPE.Def",
+      "azureSubscriptionId": "b47beaaf-7461-4b34-844a-7105d6b8c0d7",
+      "serviceResources": [
+        {
+          "name": "TorusAzure.CertNoti.ServiceResource.PPE",
+          "instanceOf": "CertNoti-PPE",
+          "armParametersPath": "Parameters\\parameters.ppe.json",
+          "rolloutParametersPath": "parameters\\rolloutParameters.ppe.json",
+          "applications": [
+            {
+              "name": "certnoti",
+              "instanceOf": "app-def-ppe",
+              "armResourceName": "certnoti-ppe-aks"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
