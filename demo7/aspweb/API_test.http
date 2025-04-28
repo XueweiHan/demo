@@ -1,0 +1,19 @@
+###
+POST http://localhost:8080/items
+Content-Type: application/json
+
+{
+  "id": 1234,
+  "name": "a",
+  "dueDate": "2024-09-24T00:00:00Z",
+  "isCompleted": false
+}
+
+###
+GET http://localhost:8080/items
+
+###
+GET http://localhost:8080/items/123
+
+###
+DELETE http://localhost:8080/items/123

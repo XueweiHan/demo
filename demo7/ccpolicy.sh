@@ -1,15 +1,45 @@
 #!/bin/bash
 set -e
 
-# Get the YAML file name
-yaml_file="$1"
-# Get the tarball name
-tarball="$2"
+yaml_file="$1"                 # yaml file name
+tar_mapping_file="$2"          # tar mapping json file name (optional)
+main_acr="${3:+$3.azurecr.io}" # main acr name (optional)
+
+function read_json_to_mapping() {
+  local json_file="$1"
+  declare -gA mapping # Declare global associative array
+  mapping=()
+
+  if [[ -f "$json_file" ]]; then
+    while IFS="=" read -r key value; do
+      mapping["$key"]="$value"
+    done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' "$json_file")
+  fi
+}
+
+function write_mapping_to_json() {
+  local -n ref="$1" # Reference to the associative array passed by name
+  local json_file="$2"
+
+  local json="{"
+  for key in "${!ref[@]}"; do
+    json+="\n  \"$key\": \"${ref[$key]}\","
+  done
+  json="${json%,}\n}"
+
+  echo -e "$json" >"$json_file"
+}
 
 # Clean up the split parts
 rm -f xx*
 
 dos2unix "$yaml_file"
+
+# Check if the YAML file contains 'virtualnode2'
+if ! grep -q 'virtualnode2' "$yaml_file"; then
+  echo -e "\033[90mSkipping: No 'virtualnode2' found in $yaml_file\033[0m"
+  exit 0
+fi
 
 # Split the YAML file into multiple parts
 csplit -s -z "$yaml_file" '/^---$/' '{*}'
@@ -17,20 +47,60 @@ csplit -s -z "$yaml_file" '/^---$/' '{*}'
 # Process each part with ccpolicy.sh
 for part in xx*; do
 
-  kind_line=$(grep '^kind:' "$part")
-  name_line=$(grep '^\s\+name:' "$part" | head -n 1)
+  kind_line=$(grep '^kind:' "$part" || true)
+  name_line=$(grep '^\s\+name:' "$part" | head -n 1 || true)
   if ! grep -q 'virtualnode2' "$part"; then
     echo -e "\033[90mSkipping: $kind_line $name_line\033[0m"
     continue
   fi
-  echo -e "\033[92mProcessing: $kind_line $name_line\033[0m"
+  echo -e "\033[32mProcessing: $kind_line $name_line\033[0m"
 
   echo -e "\033[36mUpdating empty values in the YAML file...\033[0m"
   sed -i 's/^\(\s*value:\s\)$/\1""/g' "$part"
 
+  if [[ -n "$tar_mapping_file" ]]; then
+    # Read the tar mapping JSON file into "mapping"
+    read_json_to_mapping $tar_mapping_file
+
+    # Find images in the YAML file
+    images=$(grep -E '^\s+image:\s(.*)$|^\s+\-\simage:\s(.*)$' $part | awk -F': ' '{print $2}' | sed "s/['\"]//g")
+
+    for image in $images; do
+
+      new_image=$image
+      if [[ -n "$main_acr" && "$image" != "$main_acr"* ]]; then
+        new_image="$main_acr/$image"
+      fi
+
+      # Check if the image is already in the mapping
+      if [[ -z "${mapping[$new_image]}" ]]; then
+
+        # Add image into the mapping in image:tar format
+        tarball=$(basename $image | sed 's/:/_/g').tar
+        mapping[$new_image]=$tarball
+
+        echo -e "\033[36mPulling image: $image ...\033[0m"
+        skopeo copy docker://$image oci-archive:$tarball
+
+        if [[ "$image" != "$new_image" ]]; then
+          echo -e "\033[36mPushing image: $new_image ...\033[0m"
+          skopeo copy oci-archive:$tarball docker://$new_image
+
+          echo "Replacing image $image with $new_image in the YAML file..."
+          sed -i "s|$image|$new_image|g" "$part"
+        fi
+      fi
+    done
+
+    # Write the updated mapping to the JSON file
+    write_mapping_to_json mapping $tar_mapping_file
+
+    cat $tar_mapping_file
+  fi
+
   echo -e "\033[36mGenerating the virtual node confidential container policy...\033[0m"
   # az confcom acipolicygen -y --virtual-node-yaml "$part" --print-policy | base64 -d | sha256sum | cut -d' ' -f1
-  az confcom acipolicygen -y --virtual-node-yaml "$part" ${tarball:+--tar $tarball}
+  az confcom acipolicygen -y --virtual-node-yaml "$part" ${tar_mapping_file:+--tar $tar_mapping_file}
 
   # Read all content from the YAML file
   content=$(cat "$part")

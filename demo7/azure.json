@@ -1,0 +1,5 @@
+{
+  "subscriptionId": "cd8a92db-a0c2-4273-816c-5149a1a1c5c9",
+  "resourceGroup": "hunter-test-a-rg",
+  "useWorkloadIdentityExtension": true
+}

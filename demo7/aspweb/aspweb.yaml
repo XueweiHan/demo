@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aspweb
+spec:
+  selector:
+    matchLabels:
+      app: aspweb
+  template:
+    metadata:
+      labels:
+        app: aspweb
+        azure.workload.identity/use: "true"
+      annotations:
+        microsoft.containerinstance.virtualnode.injectdns: "false"
+    spec:
+      serviceAccountName: demo-sa
+      containers:
+        - name: aspweb
+          image: ptmsdev/aspweb:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: ".5"
+            limits:
+              memory: "1024Mi"
+              cpu: "1"
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: APP_SETTINGS_FILE
+              value: appsettings-aspweb.json
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aspweb-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: aspweb
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: https-pass-through-gateway
+spec:
+  selector:
+    istio: aks-istio-ingressgateway-external
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: PASSTHROUGH
+      hosts:
+        - '*'
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - '*'
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: aspweb-https-vs
+spec:
+  hosts:
+    - aspweb.hunterapp.net  # domain name for our app
+  gateways:
+    - https-pass-through-gateway
+  tls:
+    - match:
+        - port: 443
+          sniHosts:
+            - aspweb.hunterapp.net
+      route:
+        - destination:
+            host: aspweb-svc
+            port:
+              number: 443
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: aspweb-http-vs
+spec:
+  hosts:
+    - aspweb.hunterapp.net
+  gateways:
+    - https-pass-through-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: aspweb-svc # k8s service name
+            port:
+              number: 80

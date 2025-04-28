@@ -1,0 +1,8 @@
+.vs/
+bin/
+obj/
+*.pfx
+*.crt
+*.csr
+*.pem
+*.key
