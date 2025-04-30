@@ -9,7 +9,7 @@ namespace Functions
     {
         [FunctionName("TimerTrigger1")]
         [Timeout("00:00:10")]
-        public async Task Run([TimerTrigger("*/3 * * * * *")] TimerInfo myTimer, ILogger log, CancellationToken cancellationToken)
+        public async Task Run([TimerTrigger("*/3 * * * * *", RunOnStartup = true)] TimerInfo myTimer, ILogger log, CancellationToken cancellationToken)
         {
             log.LogInformation($"TimerTrigger1 start {{");
             await Task.Delay(2000);

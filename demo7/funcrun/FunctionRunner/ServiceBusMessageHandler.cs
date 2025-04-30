@@ -4,108 +4,91 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    internal class ServiceBusMessageHandler
+    internal class ServiceBusMessageHandler : BaseTriggerHandler
     {
-        FunctionInfo _funcInfo;
-        ILogger _logger;
-        string? _name;
-
-        public ServiceBusMessageHandler(FunctionInfo funcInfo, ILogger logger)
+        private readonly string _fullyQualifiedNamespace;   
+        public ServiceBusMessageHandler(FunctionInfo funcInfo, ILogger logger, CancellationToken cancellationToken)
+            : base(funcInfo, logger, cancellationToken)
         {
-            _funcInfo = funcInfo;
-            _logger = logger;
-            _name = Path.GetFileName(Path.GetDirectoryName(_funcInfo.JsonFilePath));
-
-            foreach (var binding in funcInfo.Function.Bindings)
-            {
-                ServiceBusWatcher(binding);
-            }
+            _fullyQualifiedNamespace = Environment.GetEnvironmentVariable(_binding.Connection + "__fullyQualifiedNamespace") ?? string.Empty;
         }
 
-        // handle received messages
-        Task MessageHandlerAsync(ProcessMessageEventArgs args)
+        public override void PrintFunctionInfo()
         {
-            string body = args.Message.Body.ToString();
-            Console.WriteLine($"[{ConsoleColor.Cyan}{_name}{ConsoleColor.Default} message received at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
-
-            _ = Task.Run(async () =>
-            {
-                _funcInfo.Method.Invoke(_funcInfo.Instance, new object[] { body, _logger });
-
-                // complete the message. message is deleted from the queue. 
-                await args.CompleteMessageAsync(args.Message);
-            });
-
-            return Task.CompletedTask;
+            base.PrintFunctionInfo();
+            Console.WriteLine($"  Connection: {_fullyQualifiedNamespace}");
+            Console.WriteLine($"  Queue:      {_binding.QueueName}");
         }
 
-        async Task MessageHandler(ProcessMessageEventArgs args)
+        public override async Task RunAsync()
         {
-            var body = args.Message.Body.ToString();
-            var parameters = new List<object>();
-            foreach (var p in _funcInfo.Parameters)
-            {
-                object obj = null;
-                switch (p.ParameterType.FullName)
-                {
-                    case "Microsoft.Extensions.Logging.ILogger":
-                        obj = _logger;
-                        break;
-                    case "System.String":
-                        // TODO: do we need to check the attribute on the parameter?
-                        obj = body;
-                        break;
-                    case "System.Threading.CancellationToken":
-                        // TODO: cancel Token, base on the timeout attribute on the method
-                        break;
-                }
-
-                parameters.Add(obj);
-            }
-
-            Console.WriteLine($"[{ConsoleColor.Cyan}{_name}{ConsoleColor.Default} message received at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
-
-            _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
-
-            // complete the message. message is deleted from the queue. 
-            await args.CompleteMessageAsync(args.Message);
-        }
-
-        // handle any errors when receiving messages
-        Task ErrorHandler(ProcessErrorEventArgs args)
-        {
-            Console.WriteLine(args.Exception.ToString());
-            return Task.CompletedTask;
-        }
-
-        void ServiceBusWatcher(FunctionBinding binding)
-        {
-            var fullyQualifiedNamespace = Environment.GetEnvironmentVariable(binding.Connection + "__fullyQualifiedNamespace");
-
-            Console.WriteLine($"{ConsoleColor.Yellow}{_name}:{ConsoleColor.Default} {binding.Type}");
-            Console.WriteLine($"  File:       {_funcInfo.Function.ScriptFile}");
-            Console.WriteLine($"  Entry:      {_funcInfo.Function.EntryPoint}");
-            Console.WriteLine($"  Connection: {fullyQualifiedNamespace}");
-            Console.WriteLine($"  Queue:      {binding.QueueName}");
-
             var client = new ServiceBusClient(
-                fullyQualifiedNamespace,
+                _fullyQualifiedNamespace,
                 new DefaultAzureCredential(),
                 new ServiceBusClientOptions()
                 {
                     TransportType = ServiceBusTransportType.AmqpWebSockets
                 });
 
-            var processor = client.CreateProcessor(binding.QueueName, new ServiceBusProcessorOptions());
+            await using var processor = client.CreateProcessor(_binding.QueueName);
 
             // add handler to process messages
-            processor.ProcessMessageAsync += MessageHandler;
+            processor.ProcessMessageAsync += MessageHandlerAsync;
 
             // add handler to process any errors
-            processor.ProcessErrorAsync += ErrorHandler;
+            processor.ProcessErrorAsync += ErrorHandlerAsync;
 
-            // start processing 
-            processor.StartProcessingAsync().Wait();
+            try
+            {
+                // start processing 
+                await processor.StartProcessingAsync(_cancellationToken);
+
+                // wait for cancellation
+                await Task.Delay(Timeout.Infinite, _cancellationToken);
+            }
+            finally
+            {
+                // stop processing
+                await processor.StopProcessingAsync();
+                Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} finished at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
+            }
+        }
+
+        // handle received messages
+        async Task MessageHandlerAsync(ProcessMessageEventArgs args)
+        {
+            var body = args.Message.Body.ToString();
+            var parameters = new List<object?>();
+            foreach (var p in _funcInfo.Parameters)
+            {
+                object? obj = null;
+                if (!FillParameter(p, ref obj) && p.ParameterType.FullName == "System.String")
+                {
+                    // TODO: do we need to check the attribute on the parameter?
+                    parameters.Add(body);
+                    continue;
+                }
+
+                parameters.Add(obj);
+            }
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException("Operation was cancelled", _cancellationToken);
+            }
+
+            Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} message received at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
+            _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
+
+            // complete the message. message is deleted from the queue. 
+            await args.CompleteMessageAsync(args.Message, _cancellationToken);
+        }
+
+        // handle any errors when receiving messages
+        Task ErrorHandlerAsync(ProcessErrorEventArgs args)
+        {
+            Console.WriteLine(args.Exception.ToString());
+            return Task.CompletedTask;
         }
     }
 }

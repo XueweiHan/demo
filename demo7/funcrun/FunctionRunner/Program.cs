@@ -1,38 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using System.Reflection;
 
 namespace FunctionRunner
 {
-    public class FunctionBinding
-    {
-        public required string Type { get; set; }
-        public string Connection { get; set; }
-        public string QueueName { get; set; }
-        public string Schedule { get; set; }
-    }
-
-    public class FunctionDefination
-    {
-        public required string EntryPoint { get; set; }
-        public required string ScriptFile { get; set; }
-        public required FunctionBinding[] Bindings { get; set; }
-    }
-
-    public class FunctionInfo
-    {
-        public required FunctionDefination Function { get; set; }
-        public required dynamic Instance { get; set; }
-        public required MethodInfo Method { get; set; }
-        public required ParameterInfo[] Parameters { get; set; }
-        public required string JsonFilePath { get; set; }
-    }
-
     internal class Program
     {
         static ILogger logger = new ConsoleLogger();
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var root = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
             if (root == null)
@@ -41,18 +15,37 @@ namespace FunctionRunner
                 return;
             }
 
-            var functionInfos = LoadFunctions(root);
+            var functionInfos = FunctionInfo.Load(root);
+
+            using var cts = new CancellationTokenSource();
+
+            var tasks = new List<Task>();
 
             foreach (var info in functionInfos)
             {
+                BaseTriggerHandler? handler = null;
+
                 var type = info.Function.Bindings[0].Type;
                 if (type == "serviceBusTrigger")
                 {
-                    new ServiceBusMessageHandler(info, logger);
+                    handler = new ServiceBusMessageHandler(info, logger, cts.Token);
                 }
                 else if (type == "timerTrigger")
                 {
-                    new TimerTriggerHandler(info, logger);
+                    handler = new TimerTriggerHandler(info, logger, cts.Token);
+                }
+                else
+                {
+                    handler = new BaseTriggerHandler(info, logger, cts.Token);
+                    Console.WriteLine($"Unsupported trigger type: {type}");
+                }
+
+                handler.UpdateDisabled();
+                handler.PrintFunctionInfo();
+
+                if (!info.Function.Disabled)
+                {
+                    tasks.Add(handler.RunAsync());
                 }
             }
 
@@ -61,52 +54,40 @@ namespace FunctionRunner
             // var httpHandler = new HttpHandler(portNumber);
             // httpHandler.Start();
 
-            Console.WriteLine($"{Environment.NewLine}Press Ctrl-C to exit.{Environment.NewLine}");
-            Thread.Sleep(Timeout.Infinite);
-        }
-
-        static List<FunctionInfo> LoadFunctions(string root)
-        {
-            var funcInfos = new List<FunctionInfo>();
-
-            var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
-            foreach (var file in functionJsonFiles)
+            Console.CancelKeyPress += (s, e) =>
             {
-                var functionJson = File.ReadAllText(file);
-                var function = JsonConvert.DeserializeObject<FunctionDefination>(functionJson);
-                if (function == null) { continue; }
+                e.Cancel = true; // Prevent the process from terminating.
+                Console.WriteLine($"{Environment.NewLine}Cancelling...{Environment.NewLine}");
+                cts.Cancel();
+            };
 
-                var dllPath = Path.GetFullPath(Path.Combine(root, Path.GetFileName(function.ScriptFile)));
-                var typeName = Path.GetFileNameWithoutExtension(function.EntryPoint);
-                var methodName = Path.GetExtension(function.EntryPoint).TrimStart('.');
-
-                var dll = LoadFunction(dllPath);
-                var type = dll.GetType(typeName);
-                if (type != null)
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                if (!cts.IsCancellationRequested)
                 {
-                    dynamic? instance = Activator.CreateInstance(type);
-                    var method = type.GetMethod(methodName);
-                    if (method != null && instance != null)
-                    {
-                        funcInfos.Add(new FunctionInfo
-                        {
-                            Function = function,
-                            Method = method!,
-                            Instance = instance!,
-                            Parameters = method!.GetParameters().ToArray()!,
-                            JsonFilePath = file,
-                        });
-                    }
+                    Console.WriteLine($"{Environment.NewLine}Exiting...{Environment.NewLine}");
+                    cts.Cancel(false);
                 }
+            };
+
+            Console.WriteLine($"{Environment.NewLine}Press Ctrl-C to exit.{Environment.NewLine}");
+
+            try
+            {
+                await Task.WhenAll(tasks);
             }
-
-            return funcInfos;
-        }
-
-        static Assembly LoadFunction(string functionBinaryLocation)
-        {
-            var loadContext = new FunctionLoadContext(functionBinaryLocation);
-            return loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(functionBinaryLocation)));
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine($"Cancelled.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exit Error: {ex.Message}");
+            }
+            finally
+            {
+                Console.WriteLine($"Exit.");
+            }
         }
     }
 }

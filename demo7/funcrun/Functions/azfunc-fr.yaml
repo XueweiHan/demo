@@ -14,7 +14,7 @@ spec:
         app: azfunc-fr
         azure.workload.identity/use: "true"
     spec:
-      serviceAccountName: demo7-sa
+      serviceAccountName: demo-sa
       nodeSelector:
         virtualization: virtualnode2
       tolerations:
@@ -23,4 +23,5 @@ spec:
           operator: Exists
       containers:
         - name: azfunc-fr
-          image: hunterdemo7cr.azurecr.io/demo7-func-fr:0.1
+          image: huntersharedcr.azurecr.io/demo7-func-fr:8.0-alpine
+          imagePullPolicy: Always

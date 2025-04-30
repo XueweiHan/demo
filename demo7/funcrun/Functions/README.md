@@ -31,14 +31,13 @@ dotnet .\QueueSender\bin\Debug\net6.0\QueueSender.dll
 
 # local function base container run
 ```
-linux:
-export name=hunter-demo7
-export acr=${name/-/}cr.azurecr.io
-export ver=0.1
-windows:
-$name='hunter-demo7'
-$acr="$($name.replace('-',''))cr.azurecr.io"
-$ver=0.1
+#linux:
+acr=huntersharedcr.azurecr.io
+ver=8.0-alpine
+
+#windows:
+$acr="huntersharedcr.azurecr.io"
+$ver=8.0-alpine
 
 #-> Manually update the servcie bus namespace name in all 2 non-local Dockerfiles
 docker build -t $acr/demo7-func-fb:$ver -f Dockerfile_fb .

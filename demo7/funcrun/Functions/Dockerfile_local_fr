@@ -1,6 +1,6 @@
 FROM az-cli-alpine AS installer-env
 
-FROM hunterdemo7cr.azurecr.io/demo7-func-fr:0.1
+FROM huntersharedcr.azurecr.io/demo7-func-fr:8.0-alpine
 
 ###################################################
 # for local testing

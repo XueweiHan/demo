@@ -4,8 +4,9 @@
       "commandName": "Project",
       "environmentVariables": {
         "AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\Functions\\bin\\Debug\\net6.0",
-        "ServiceBusConnection1__fullyQualifiedNamespace": "hunter-demo7-service-bus.servicebus.windows.net",
-        "ServiceBusConnection2__fullyQualifiedNamespace": "hunter-demo7-service-bus.servicebus.windows.net"
+        "ServiceBusConnection1__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
+        "ServiceBusConnection2__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
+        "AzureWebJobs.TimerTrigger1.Disabled": "true"
       }
     }
   }

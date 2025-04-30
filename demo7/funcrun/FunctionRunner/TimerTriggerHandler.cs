@@ -3,59 +3,46 @@ using NCrontab;
 
 namespace FunctionRunner
 {
-    internal class TimerTriggerHandler
+    internal class TimerTriggerHandler : BaseTriggerHandler
     {
-        FunctionInfo _funcInfo;
-        ILogger _logger;
-        string? _name;
-
-        public TimerTriggerHandler(FunctionInfo funcInfo, ILogger logger)
+        public TimerTriggerHandler(FunctionInfo funcInfo, ILogger logger, CancellationToken cancellationToken)
+            : base(funcInfo, logger, cancellationToken)
         {
-            _funcInfo = funcInfo;
-            _logger = logger;
-            _name = Path.GetFileName(Path.GetDirectoryName(_funcInfo.JsonFilePath));
-
-            foreach (var binding in funcInfo.Function.Bindings)
-            {
-                TimerStart(binding);
-            }
         }
 
-        void TimerStart(FunctionBinding binding)
+        public override void PrintFunctionInfo()
         {
-            Console.WriteLine($"{ConsoleColor.Yellow}{_name}:{ConsoleColor.Default} {binding.Type}");
-            Console.WriteLine($"  File:       {_funcInfo.Function.ScriptFile}");
-            Console.WriteLine($"  Entry:      {_funcInfo.Function.EntryPoint}");
-            Console.WriteLine($"  Schedule:   {binding.Schedule}");
+            base.PrintFunctionInfo();
+            Console.WriteLine($"  Schedule:   {_binding.Schedule}");
+        }
 
-
-            var parameters = new List<object>();
+        public override async Task RunAsync()
+        {
+            var parameters = new List<object?>();
             foreach (var p in _funcInfo.Parameters)
             {
-                object obj = null;
-                switch (p.ParameterType.FullName)
-                {
-                    case "Microsoft.Extensions.Logging.ILogger":
-                        obj = _logger;
-                        break;
-                    case "System.Threading.CancellationToken":
-                        // TODO: cancel Token, base on the timeout attribute on the method
-                        break;
-                }
-
+                object? obj = null;
+                FillParameter(p, ref obj);
                 parameters.Add(obj);
             }
 
-            _ = Run(binding.Schedule, () =>
+            void run()
             {
-                Console.WriteLine($"[{ConsoleColor.Cyan}{_name}{ConsoleColor.Default} at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
-                _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
-            });
-        }
+                if (_cancellationToken.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Operation was cancelled", _cancellationToken);
+                }
 
-        static async Task Run(string cronExpression, Action action)
-        {
-            var schedule = CrontabSchedule.Parse(cronExpression, new CrontabSchedule.ParseOptions { IncludingSeconds = true });
+                Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
+                _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
+            }
+
+            if (_binding.RunOnStartup)
+            {
+                run();
+            }
+
+            var schedule = CrontabSchedule.Parse(_binding.Schedule, new CrontabSchedule.ParseOptions { IncludingSeconds = true });
             var nextCheckTimeSpan = TimeSpan.FromDays(1);
 
             for (; ; )
@@ -70,21 +57,21 @@ namespace FunctionRunner
                     {
                         if (timeSpan > TimeSpan.Zero)
                         {
-                            await Task.Delay(timeSpan);
+                            await Task.Delay(timeSpan, _cancellationToken);
                         }
                         break;
                     }
                     else
                     {
-                        await Task.Delay(nextCheckTimeSpan);
+                        await Task.Delay(nextCheckTimeSpan, _cancellationToken);
                     }
                 }
 
-                action();
+                run();
 
                 while (schedule.GetNextOccurrence(DateTime.UtcNow) == next)
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(100));
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), _cancellationToken);
                 }
             }
         }
