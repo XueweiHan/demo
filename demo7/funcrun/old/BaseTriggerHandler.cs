@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Reflection;
 
 namespace FunctionRunner
 {
@@ -31,9 +30,9 @@ namespace FunctionRunner
             return Task.CompletedTask;
         }
 
-        protected bool FillParameter(ParameterInfo p, ref object? obj)
+        protected bool FillParameter(string? typeName, ref object? obj)
         {
-            switch (p.ParameterType.FullName)
+            switch (typeName)
             {
                 case "Microsoft.Extensions.Logging.ILogger":
                     obj = _logger;
@@ -46,13 +45,10 @@ namespace FunctionRunner
             return false;
         }
 
-        internal void UpdateDisabled()
+        internal bool Disabled()
         {
             var disabled = Environment.GetEnvironmentVariable($"AzureWebJobs.{_funcInfo.Name}.Disabled");
-            if (bool.TryParse(disabled, out var isDisabled))
-            {
-                _funcInfo.Function.Disabled = isDisabled;
-            }
+            return bool.TryParse(disabled, out var isDisabled) ? isDisabled: false;
         }
     }
 }

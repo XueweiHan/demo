@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,12 +9,14 @@ namespace Functions
     public class TimerTrigger1
     {
         [FunctionName("TimerTrigger1")]
-        [Timeout("00:00:10")]
-        public async Task Run([TimerTrigger("*/3 * * * * *", RunOnStartup = true)] TimerInfo myTimer, ILogger log, CancellationToken cancellationToken)
+        [Timeout("00:00:03")]
+        public async Task RunAsync([TimerTrigger("*/7 * * * * *")] TimerInfo myTimer, ILogger log, CancellationToken cancellationToken)
         {
-            log.LogInformation($"TimerTrigger1 start {{");
-            await Task.Delay(2000);
-            log.LogInformation($"TimerTrigger1 end   }}");
+            log.LogInformation($"TimerTrigger1 start [{DateTime.UtcNow:u}]");
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+            log.LogInformation($"TimerTrigger1 end [{DateTime.UtcNow:u}]");
+
+            throw new System.Exception("TimerTrigger1 exception");
         }
     }
 }

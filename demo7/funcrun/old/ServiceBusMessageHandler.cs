@@ -6,7 +6,7 @@ namespace FunctionRunner
 {
     internal class ServiceBusMessageHandler : BaseTriggerHandler
     {
-        private readonly string _fullyQualifiedNamespace;   
+        readonly string _fullyQualifiedNamespace;
         public ServiceBusMessageHandler(FunctionInfo funcInfo, ILogger logger, CancellationToken cancellationToken)
             : base(funcInfo, logger, cancellationToken)
         {
@@ -50,7 +50,6 @@ namespace FunctionRunner
             {
                 // stop processing
                 await processor.StopProcessingAsync();
-                Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} finished at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
             }
         }
 
@@ -62,7 +61,7 @@ namespace FunctionRunner
             foreach (var p in _funcInfo.Parameters)
             {
                 object? obj = null;
-                if (!FillParameter(p, ref obj) && p.ParameterType.FullName == "System.String")
+                if (!FillParameter(p.ParameterType.FullName, ref obj) && p.ParameterType.FullName == "System.String")
                 {
                     // TODO: do we need to check the attribute on the parameter?
                     parameters.Add(body);
@@ -77,8 +76,8 @@ namespace FunctionRunner
                 throw new OperationCanceledException("Operation was cancelled", _cancellationToken);
             }
 
-            Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} message received at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
-            _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
+            Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} message received at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]");
+            _funcInfo.Invoke(parameters.ToArray());
 
             // complete the message. message is deleted from the queue. 
             await args.CompleteMessageAsync(args.Message, _cancellationToken);

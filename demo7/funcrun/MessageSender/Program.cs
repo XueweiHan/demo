@@ -47,7 +47,7 @@ using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync
 for (int i = 1; i <= numOfMessages; i++)
 {
     // try adding a message to the batch
-    if (!messageBatch.TryAddMessage(new ServiceBusMessage($"Message {i} {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}")))
+    if (!messageBatch.TryAddMessage(new ServiceBusMessage($"Message {i} {DateTime.UtcNow:u}")))
     {
         // if it is too large for the batch
         throw new Exception($"The message {i} is too large to fit in the batch.");

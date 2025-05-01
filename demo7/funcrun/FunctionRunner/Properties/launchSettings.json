@@ -6,7 +6,7 @@
         "AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\Functions\\bin\\Debug\\net6.0",
         "ServiceBusConnection1__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
         "ServiceBusConnection2__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
-        "AzureWebJobs.TimerTrigger1.Disabled": "true"
+        "AzureWebJobs.TimerTrigger2.Disabled": "false"
       }
     }
   }

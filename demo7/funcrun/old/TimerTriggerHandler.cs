@@ -3,13 +3,8 @@ using NCrontab;
 
 namespace FunctionRunner
 {
-    internal class TimerTriggerHandler : BaseTriggerHandler
+    internal class TimerTriggerHandler(FunctionInfo funcInfo, ILogger logger, CancellationToken cancellationToken) : BaseTriggerHandler(funcInfo, logger, cancellationToken)
     {
-        public TimerTriggerHandler(FunctionInfo funcInfo, ILogger logger, CancellationToken cancellationToken)
-            : base(funcInfo, logger, cancellationToken)
-        {
-        }
-
         public override void PrintFunctionInfo()
         {
             base.PrintFunctionInfo();
@@ -22,7 +17,7 @@ namespace FunctionRunner
             foreach (var p in _funcInfo.Parameters)
             {
                 object? obj = null;
-                FillParameter(p, ref obj);
+                FillParameter(p.ParameterType.FullName, ref obj);
                 parameters.Add(obj);
             }
 
@@ -33,8 +28,8 @@ namespace FunctionRunner
                     throw new OperationCanceledException("Operation was cancelled", _cancellationToken);
                 }
 
-                Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}]");
-                _funcInfo.Method.Invoke(_funcInfo.Instance, parameters.ToArray());
+                Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]");
+                _funcInfo.Invoke(parameters.ToArray());
             }
 
             if (_binding.RunOnStartup)

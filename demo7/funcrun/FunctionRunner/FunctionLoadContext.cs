@@ -5,7 +5,7 @@ namespace FunctionRunner
 {
     internal class FunctionLoadContext : AssemblyLoadContext
     {
-        private AssemblyDependencyResolver _resolver;
+        readonly AssemblyDependencyResolver _resolver;
 
         public FunctionLoadContext(string pluginPath)
         {

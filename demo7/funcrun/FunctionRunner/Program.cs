@@ -1,92 +1,64 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
     internal class Program
     {
-        static ILogger logger = new ConsoleLogger();
-
         static async Task Main(string[] args)
         {
-            var root = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
-            if (root == null)
-            {
-                Console.WriteLine("AzureWebJobsScriptRoot is not set.");
-                return;
-            }
+            var functionInfos = FunctionInfo.Load();
 
-            var functionInfos = FunctionInfo.Load(root);
-
-            using var cts = new CancellationTokenSource();
-
-            var tasks = new List<Task>();
-
-            foreach (var info in functionInfos)
-            {
-                BaseTriggerHandler? handler = null;
-
-                var type = info.Function.Bindings[0].Type;
-                if (type == "serviceBusTrigger")
+            using var host = Host.CreateDefaultBuilder(args)
+                .ConfigureServices(services =>
                 {
-                    handler = new ServiceBusMessageHandler(info, logger, cts.Token);
-                }
-                else if (type == "timerTrigger")
+                    services.AddHostedService<HeartBeatService>();
+                    services.AddHostedService<HTTPService>();
+
+                    foreach (var info in functionInfos)
+                    {
+                        AddFunctionService(services, info);
+                    }
+
+                    services.AddLogging(builder =>
+                    {
+                        builder.AddConsole();
+                        builder.SetMinimumLevel(LogLevel.Information);
+                    });
+                })
+                .ConfigureHostOptions(options =>
                 {
-                    handler = new TimerTriggerHandler(info, logger, cts.Token);
-                }
-                else
+                    options.ShutdownTimeout = TimeSpan.FromSeconds(20);
+                })
+                .Build();
+
+            await host.RunAsync();
+
+            Console.WriteLine("Exit.");
+        }
+
+        static readonly Dictionary<string, Func<FunctionInfo, ILogger<FunctionBaseService>, IHostedService>> serviceMap = new()
+        {
+            ["serviceBusTrigger"] = (funcInfo, logger) => new FunctionServiceBusTriggerService(funcInfo, logger),
+            ["timerTrigger"] = (funcInfo, logger) => new FunctionTimerTriggerService(funcInfo, logger)
+        };
+
+        static void AddFunctionService(IServiceCollection services, FunctionInfo info)
+        {
+            var type = info.Function.Bindings[0].Type;
+            if (serviceMap.TryGetValue(type, out var serviceFactory))
+            {
+                services.AddSingleton(sp =>
                 {
-                    handler = new BaseTriggerHandler(info, logger, cts.Token);
-                    Console.WriteLine($"Unsupported trigger type: {type}");
-                }
-
-                handler.UpdateDisabled();
-                handler.PrintFunctionInfo();
-
-                if (!info.Function.Disabled)
-                {
-                    tasks.Add(handler.RunAsync());
-                }
+                    var service = serviceFactory(info, sp.GetRequiredService<ILogger<FunctionBaseService>>());
+                    ((FunctionBaseService)service).PrintFunctionInfo();
+                    return service;
+                });
             }
-
-            // var port = Environment.GetEnvironmentVariable("FuctionRunnerHttpPort");
-            // int.TryParse(port, out var portNumber);
-            // var httpHandler = new HttpHandler(portNumber);
-            // httpHandler.Start();
-
-            Console.CancelKeyPress += (s, e) =>
+            else
             {
-                e.Cancel = true; // Prevent the process from terminating.
-                Console.WriteLine($"{Environment.NewLine}Cancelling...{Environment.NewLine}");
-                cts.Cancel();
-            };
-
-            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
-            {
-                if (!cts.IsCancellationRequested)
-                {
-                    Console.WriteLine($"{Environment.NewLine}Exiting...{Environment.NewLine}");
-                    cts.Cancel(false);
-                }
-            };
-
-            Console.WriteLine($"{Environment.NewLine}Press Ctrl-C to exit.{Environment.NewLine}");
-
-            try
-            {
-                await Task.WhenAll(tasks);
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine($"Cancelled.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Exit Error: {ex.Message}");
-            }
-            finally
-            {
-                Console.WriteLine($"Exit.");
+                new FunctionBaseService(info, null).PrintFunctionInfo(true);
             }
         }
     }
