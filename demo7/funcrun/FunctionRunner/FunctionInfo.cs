@@ -30,40 +30,75 @@ namespace FunctionRunner
         readonly MethodInfo _method = method;
         readonly TimeSpan _timeout = timeout;
 
-        public async Task InvokeAsync(object?[] parameters)
+        public bool IsDisabled()
         {
-            for (int i = 0; i < parameters.Length; ++i)
-            {
-                if (parameters[i] is CancellationToken originalToken)
-                {
-                    var cts = CancellationTokenSource.CreateLinkedTokenSource(originalToken);
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(_timeout, originalToken);
-                        Console.WriteLine($"[{ConsoleColor.Cyan}{Name}{ConsoleColor.Default} time out at {DateTime.UtcNow:u}]");
-                        cts.Cancel();
-                        cts.Dispose();
-                    });
+            var disabled = Environment.GetEnvironmentVariable($"AzureWebJobs.{Name}.Disabled");
+            return bool.TryParse(disabled, out var isDisabled) && isDisabled;
+        }
 
-                    parameters[i] = cts.Token;
-                }
-            }
+        public async Task<bool> InvokeAsync(object?[] parameters)
+        {
+            bool success = false;
 
-            Console.WriteLine($"[{ConsoleColor.Cyan}{Name}{ConsoleColor.Default} is triggered at {DateTime.UtcNow:u}]");
+            var name = $"{ConsoleColor.Cyan}{Name}{ConsoleColor.Default}";
+            //if (IsDisabled())
+            //{
+            //    Console.WriteLine($"[{name} is  {ConsoleBackgroundColor.Red}skipped{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}]");
+            //    return false;
+            //}
+
+            Console.WriteLine($"[{name} is triggered at {DateTime.UtcNow:u}]");
 
             try
             {
-                dynamic? result = _method.Invoke(_instance, parameters);
+                int cancelTokenIndex = Array.FindIndex(parameters, p => p is CancellationToken);
 
-                if (result is Task task)
+                if (_timeout != TimeSpan.Zero &&
+                    cancelTokenIndex > -1 &&
+                    parameters[cancelTokenIndex] is CancellationToken originalToken)
                 {
-                    await task;
+                    using var timeoutCts = new CancellationTokenSource(_timeout);
+                    using var joinedCts = CancellationTokenSource.CreateLinkedTokenSource(originalToken, timeoutCts.Token);
+
+                    parameters[cancelTokenIndex] = joinedCts.Token;
+
+                    try
+                    {
+                        await InvokeAsyncCore(parameters);
+                        success = true;
+                    }
+                    catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                    {
+                        Console.WriteLine($"[{name} {ConsoleBackgroundColor.Red}timed out{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}]");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Console.WriteLine($"[{name} is cancelled at {DateTime.UtcNow:u}]");
+                    }
+                }
+                else
+                {
+                    await InvokeAsyncCore(parameters);
+                    success = true;
                 }
             }
-            catch (TaskCanceledException) { }
+            catch (StackOverflowException) { throw; }
+            catch (OutOfMemoryException) { throw; }
             catch (Exception ex)
             {
-                Console.WriteLine($"[{ConsoleColor.Cyan}{Name} {ConsoleColor.Red}exception{ConsoleColor.Default} at {DateTime.UtcNow:u}] {ex.GetType()} : {ex.StackTrace}");
+                Console.WriteLine($"[{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}] {ex.GetType()} : {ex.StackTrace}");
+            }
+
+            return success;
+        }
+
+        async Task InvokeAsyncCore(object?[] parameters)
+        {
+            dynamic? result = _method.Invoke(_instance, parameters);
+
+            if (result is Task task)
+            {
+                await task;
             }
         }
 

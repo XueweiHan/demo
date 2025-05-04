@@ -6,9 +6,11 @@ namespace FunctionRunner
     {
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var name = $"{ConsoleColor.Yellow}HeartBeatService{ConsoleColor.Default}";
+            Console.WriteLine($"[{name} is starting at {DateTime.UtcNow:u}]");
+
             try
             {
-                Console.WriteLine($"[{ConsoleColor.Cyan}HeartBeatService{ConsoleColor.Default} is starting at {DateTime.UtcNow:u}]");
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     Console.WriteLine($"{DateTime.UtcNow:u} pod heartbeat {Environment.MachineName}");
@@ -17,7 +19,7 @@ namespace FunctionRunner
             }
             finally
             {
-                Console.WriteLine($"[{ConsoleColor.Cyan}HeartBeatService{ConsoleColor.Default} is stopped at {DateTime.UtcNow:u}]");
+                Console.WriteLine($"[{name} is stopped at {DateTime.UtcNow:u}]");
             }
         }
     }

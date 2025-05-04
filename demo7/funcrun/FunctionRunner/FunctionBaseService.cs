@@ -25,30 +25,37 @@ namespace FunctionRunner
         public virtual void PrintFunctionInfo(bool unsupported = false)
         {
             var suffix = unsupported ? $" {ConsoleColor.Red}(Unsupported){ConsoleColor.Default}" : string.Empty;
+            suffix += _funcInfo.IsDisabled() ? $" {ConsoleColor.Yellow}(Disabled){ConsoleColor.Default}" : string.Empty;
             Console.WriteLine($"{ConsoleColor.Blue}{_funcInfo.Name}:{ConsoleColor.Default} {_funcInfo.Function.Bindings[0].Type}{suffix}");
             Console.WriteLine($"  File:       {_funcInfo.Function.ScriptFile}");
             Console.WriteLine($"  Entry:      {_funcInfo.Function.EntryPoint}");
         }
 
-        protected bool FillParameter(string? typeName, ref object? obj, CancellationToken stoppingToken)
+        protected object?[] PrepareParameters(params object[]? arg)
         {
-            switch (typeName)
+            var list = new List<object>(arg ?? [])
             {
-                case "Microsoft.Extensions.Logging.ILogger":
-                    obj = _logger;
-                    return true;
-                case "System.Threading.CancellationToken":
-                    obj = stoppingToken;
-                    return true;
+                _logger!
+            };
+
+            var len = _funcInfo.Parameters.Length;
+            var parameters = new object?[len];
+
+            for (int i = 0; i < len; ++i)
+            {
+                var type = _funcInfo.Parameters[i].ParameterType;
+
+                foreach (var obj in list)
+                {
+                    if (type.IsAssignableFrom(obj.GetType()))
+                    {
+                        parameters[i] = obj;
+                        break;
+                    }
+                }
             }
 
-            return false;
-        }
-
-        protected bool Disabled()
-        {
-            var disabled = Environment.GetEnvironmentVariable($"AzureWebJobs.{_funcInfo.Name}.Disabled");
-            return bool.TryParse(disabled, out var isDisabled) && isDisabled;
+            return parameters;
         }
 
         protected enum FunctionAction
@@ -62,15 +69,14 @@ namespace FunctionRunner
         {
             [FunctionAction.Start] = " is starting",
             [FunctionAction.Stop] = " is stopped",
-            [FunctionAction.Disabled] = " is disabled"
+            [FunctionAction.Disabled] = " is disabled",
         };
 
         protected void PrintStatus(FunctionAction action)
         {
-
             var message = messages.TryGetValue(action, out var result) ? result : string.Empty;
 
-            Console.WriteLine($"[{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default}{message} at {DateTime.UtcNow:u}]");
+            Console.WriteLine($"[{ConsoleColor.Yellow}{_funcInfo.Name}{ConsoleColor.Default}{message} at {DateTime.UtcNow:u}]");
         }
     }
 }

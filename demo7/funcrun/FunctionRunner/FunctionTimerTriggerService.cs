@@ -14,36 +14,21 @@ namespace FunctionRunner
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (_funcInfo.IsDisabled())
+            {
+                PrintStatus(FunctionAction.Disabled);
+                return;
+            }
+
             try
             {
                 PrintStatus(FunctionAction.Start);
-                var parameters = new List<object?>();
-                foreach (var p in _funcInfo.Parameters)
-                {
-                    object? obj = null;
-                    FillParameter(p.ParameterType.FullName, ref obj, stoppingToken);
-                    parameters.Add(obj);
-                }
 
-                async Task runAsync()
-                {
-                    if (Disabled())
-                    {
-                        PrintStatus(FunctionAction.Disabled);
-                        return;
-                    }
-
-                    if (stoppingToken.IsCancellationRequested)
-                    {
-                        throw new OperationCanceledException("Operation was cancelled", stoppingToken);
-                    }
-
-                    await _funcInfo.InvokeAsync(parameters.ToArray());
-                }
+                var parameters = PrepareParameters(stoppingToken);
 
                 if (_binding.RunOnStartup)
                 {
-                    await runAsync();
+                    await _funcInfo.InvokeAsync(parameters);
                 }
 
                 var schedule = CrontabSchedule.Parse(_binding.Schedule, new CrontabSchedule.ParseOptions { IncludingSeconds = true });
@@ -71,7 +56,7 @@ namespace FunctionRunner
                         }
                     }
 
-                    await runAsync();
+                    await _funcInfo.InvokeAsync(parameters);
 
                     while (schedule.GetNextOccurrence(DateTime.UtcNow) == next)
                     {

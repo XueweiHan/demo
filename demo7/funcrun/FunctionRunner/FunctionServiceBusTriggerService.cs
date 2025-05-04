@@ -7,21 +7,27 @@ namespace FunctionRunner
     internal class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger<FunctionBaseService> logger)
         : FunctionBaseService(funcInfo, logger)
     {
+        readonly string _fullyQualifiedNamespace = Environment.GetEnvironmentVariable(funcInfo.Function.Bindings[0].Connection + "__fullyQualifiedNamespace") ?? string.Empty;
+
         public override void PrintFunctionInfo(bool u)
         {
             base.PrintFunctionInfo(u);
-            Console.WriteLine($"  QueueName:  {_binding.QueueName}");
-            Console.WriteLine($"  Connection: {_binding.Connection}");
+            Console.WriteLine($"  Connection: {_fullyQualifiedNamespace}");
+            Console.WriteLine($"  Queue:      {_binding.QueueName}");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (_funcInfo.IsDisabled())
+            {
+                PrintStatus(FunctionAction.Disabled);
+                return;
+            }
+
             PrintStatus(FunctionAction.Start);
 
-            var fullyQualifiedNamespace = Environment.GetEnvironmentVariable(_binding.Connection + "__fullyQualifiedNamespace") ?? string.Empty;
-
             var client = new ServiceBusClient(
-                fullyQualifiedNamespace,
+                _fullyQualifiedNamespace,
                 new DefaultAzureCredential(),
                 new ServiceBusClientOptions()
                 {
@@ -55,30 +61,20 @@ namespace FunctionRunner
         async Task MessageHandlerAsync(ProcessMessageEventArgs args)
         {
             var body = args.Message.Body.ToString();
-            var parameters = new List<object?>();
-            foreach (var p in _funcInfo.Parameters)
+
+            var parameters = PrepareParameters(body, args.CancellationToken);
+
+            var success = await _funcInfo.InvokeAsync(parameters);
+
+            if (success)
             {
-                object? obj = null;
-                if (!base.FillParameter(p.ParameterType.FullName, ref obj, args.CancellationToken)
-                    && p.ParameterType.FullName == "System.String")
-                {
-                    // TODO: do we need to check the attribute on the parameter?
-                    parameters.Add(body);
-                    continue;
-                }
-
-                parameters.Add(obj);
+                // complete the message. message is deleted from the queue. 
+                await args.CompleteMessageAsync(args.Message, args.CancellationToken);
             }
-
-            if (args.CancellationToken.IsCancellationRequested)
+            else
             {
-                throw new OperationCanceledException("Operation was cancelled", args.CancellationToken);
+                await args.AbandonMessageAsync(args.Message, null, args.CancellationToken);
             }
-
-            await _funcInfo.InvokeAsync(parameters.ToArray());
-
-            // complete the message. message is deleted from the queue. 
-            await args.CompleteMessageAsync(args.Message, args.CancellationToken);
         }
 
         Task ErrorHandlerAsync(ProcessErrorEventArgs args)
