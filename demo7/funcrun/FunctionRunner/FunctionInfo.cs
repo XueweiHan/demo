@@ -1,9 +1,8 @@
-﻿using Newtonsoft.Json;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace FunctionRunner
 {
-    internal class FunctionBinding
+    class FunctionBinding
     {
         public required string Type { get; set; }
         public string? Connection { get; set; }
@@ -12,7 +11,7 @@ namespace FunctionRunner
         public bool RunOnStartup { get; set; }
     }
 
-    internal class FunctionDefinition
+    class FunctionDefinition
     {
         //public required bool Disabled { get; set; }
         public required string EntryPoint { get; set; }
@@ -20,7 +19,7 @@ namespace FunctionRunner
         public required FunctionBinding[] Bindings { get; set; }
     }
 
-    internal class FunctionInfo(FunctionDefinition function, dynamic instance, MethodInfo method, ParameterInfo[] parameters, string name, TimeSpan timeout)
+    class FunctionInfo(FunctionDefinition function, dynamic instance, MethodInfo method, ParameterInfo[] parameters, string name, TimeSpan timeout)
     {
         public FunctionDefinition Function { get; set; } = function;
         public ParameterInfo[] Parameters { get; set; } = parameters;
@@ -86,7 +85,7 @@ namespace FunctionRunner
             catch (OutOfMemoryException) { throw; }
             catch (Exception ex)
             {
-                Console.WriteLine($"[{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}] {ex.GetType()} : {ex.StackTrace}");
+                Console.Error.WriteLine($"[{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}] {ex.GetType()} : {ex.StackTrace}");
             }
 
             return success;
@@ -107,9 +106,9 @@ namespace FunctionRunner
             var funcInfos = new List<FunctionInfo>();
 
             var root = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
-            if (root == null)
+            if (string.IsNullOrEmpty(root))
             {
-                Console.WriteLine("AzureWebJobsScriptRoot is not set.");
+                Console.Error.WriteLine("AzureWebJobsScriptRoot is not set.");
                 return funcInfos;
             }
 
@@ -117,7 +116,7 @@ namespace FunctionRunner
             foreach (var file in functionJsonFiles)
             {
                 var functionJson = File.ReadAllText(file);
-                var function = JsonConvert.DeserializeObject<FunctionDefinition>(functionJson);
+                var function = JsonHelper.Deserialize<FunctionDefinition>(functionJson);
                 if (function == null) { continue; }
 
                 var dllPath = Path.GetFullPath(Path.Combine(root, Path.GetFileName(function.ScriptFile)));
@@ -126,24 +125,27 @@ namespace FunctionRunner
 
                 var dll = LoadFunction(dllPath);
                 var type = dll.GetType(typeName);
-                if (type != null)
+                if (type == null)
                 {
-                    dynamic? instance = Activator.CreateInstance(type);
-                    var method = type.GetMethod(methodName);
-                    if (method != null && instance != null)
-                    {
-                        var timeoutAttribute = method?.GetCustomAttributes()
-                            .FirstOrDefault(a => a.GetType().FullName == "Microsoft.Azure.WebJobs.TimeoutAttribute");
-                        var timeout = (TimeSpan)(timeoutAttribute?.GetType().GetProperty("Timeout")?.GetValue(timeoutAttribute) ?? TimeSpan.Zero);
+                    Console.Error.WriteLine($"Type {typeName} not found in assembly {dllPath}.");
+                    continue;
+                }
 
-                        funcInfos.Add(new FunctionInfo(
-                            function!,
-                            instance!,
-                            method!,
-                            method!.GetParameters().ToArray()!,
-                            Path.GetFileName(Path.GetDirectoryName(file))!,
-                            timeout));
-                    }
+                dynamic? instance = Activator.CreateInstance(type);
+                var method = type.GetMethod(methodName);
+                if (method != null && instance != null)
+                {
+                    var timeoutAttribute = method?.GetCustomAttributes()
+                        .FirstOrDefault(a => a.GetType().FullName == "Microsoft.Azure.WebJobs.TimeoutAttribute");
+                    var timeout = (TimeSpan)(timeoutAttribute?.GetType().GetProperty("Timeout")?.GetValue(timeoutAttribute) ?? TimeSpan.Zero);
+
+                    funcInfos.Add(new FunctionInfo(
+                        function!,
+                        instance!,
+                        method!,
+                        method!.GetParameters().ToArray()!,
+                        Path.GetFileName(Path.GetDirectoryName(file))!,
+                        timeout));
                 }
             }
 

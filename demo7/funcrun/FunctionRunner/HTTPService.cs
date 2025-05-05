@@ -3,7 +3,7 @@ using System.Net;
 
 namespace FunctionRunner
 {
-    internal class HTTPService : BackgroundService
+    class HTTPService : BackgroundService
     {
         readonly HttpListener _httpListener;
         readonly int _port = 8080;
@@ -22,10 +22,10 @@ namespace FunctionRunner
             var name = $"{ConsoleColor.Yellow}HTTPService{ConsoleColor.Default}";
             Console.WriteLine($"[{name} is listening on http://localhost:{_port}/ at {DateTime.UtcNow:u}]");
 
-            _httpListener.Start();
-
             try
             {
+                _httpListener.Start();
+
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     var context = await _httpListener.GetContextAsync(); // Wait for an incoming request
@@ -33,6 +33,10 @@ namespace FunctionRunner
                 }
             }
             catch (HttpListenerException) when (stoppingToken.IsCancellationRequested) { }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[{name} encountered an error: {ex}]");
+            }
             finally
             {
                 Console.WriteLine($"[{name} is stopped at {DateTime.UtcNow:u}]");

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Functions
 {
-    public class TimerTrigger1
+    class TimerTrigger1
     {
         int count = 0;
 

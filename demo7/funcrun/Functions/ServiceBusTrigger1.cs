@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Functions
 {
-    public class ServiceBusTrigger1
+    class ServiceBusTrigger1
     {
         [FunctionName("ServiceBusTrigger1")]
         [Timeout("00:00:10")]

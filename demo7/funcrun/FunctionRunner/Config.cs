@@ -1,10 +1,9 @@
 ﻿using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using System.Text.Json;
 
 namespace FunctionRunner
 {
-    public class Keyvault
+    class Keyvault
     {
         public required string Name { get; set; }
         public Secret[]? Secrets { get; set; }
@@ -12,25 +11,25 @@ namespace FunctionRunner
         // public VaultObject[]? Keys { get; set; }
     }
 
-    public class Secret
+    class Secret
     {
         public required string Name { get; set; }
         public string? StorePath { get; set; }
         public string? EnvVarName { get; set; }
     }
 
-    public class CopyFile
+    class CopyFile
     {
         public required string From { get; set; }
         public required string To { get; set; }
     }
 
-    public class Config
+    class Config
     {
         public Keyvault[]? Keyvaults { get; set; }
         public CopyFile[]? CopyFiles { get; set; }
 
-        internal static async Task LoadAsync()
+        public static async Task LoadAsync()
         {
             var json = Environment.GetEnvironmentVariable("CONFIG_JSON");
             if (!string.IsNullOrEmpty(json))
@@ -47,12 +46,12 @@ namespace FunctionRunner
         }
     }
 
-    internal static class ConfigLoadHelper
+    static class ConfigLoadHelper
     {
         public static async Task LoadAsync(string configJson)
         {
-            var config = JsonSerializer.Deserialize<Config>(configJson);
-            Console.WriteLine(JsonSerializer.Serialize(config, new JsonSerializerOptions() { WriteIndented = true }));
+            var config = JsonHelper.Deserialize<Config>(configJson);
+            //Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions() { WriteIndented = true }));
 
             await LoadKeyvaultAsync(config!.Keyvaults);
             CopyFiles(config!.CopyFiles);

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Functions
 {
-    public class ServiceBusTrigger2
+    class ServiceBusTrigger2
     {
         [FunctionName("ServiceBusTrigger2")]
         public void Run([ServiceBusTrigger("queue2", Connection = "ServiceBusConnection2")] string myQueueItem, ILogger log)

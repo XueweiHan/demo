@@ -2,7 +2,7 @@
 
 namespace FunctionRunner
 {
-    internal class HeartBeatService : BackgroundService
+    class HeartBeatService : BackgroundService
     {
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {

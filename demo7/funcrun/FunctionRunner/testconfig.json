@@ -1,3 +1,4 @@
+// CONFIG_JSON:
 {
   "Keyvaults": [
     {
@@ -18,3 +19,6 @@
     }
   ]
 }
+
+// CONFIG_PATH:
+// /root/testconfig.json

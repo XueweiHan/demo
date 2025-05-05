@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    internal class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger<FunctionBaseService> logger)
+    class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger<FunctionBaseService> logger)
         : FunctionBaseService(funcInfo, logger)
     {
         readonly string _fullyQualifiedNamespace = Environment.GetEnvironmentVariable(funcInfo.Function.Bindings[0].Connection + "__fullyQualifiedNamespace") ?? string.Empty;

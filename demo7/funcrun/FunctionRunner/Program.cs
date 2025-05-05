@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    internal class Program
+    class Program
     {
         static async Task Main(string[] args)
         {

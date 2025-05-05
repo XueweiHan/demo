@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace Functions
 {
-    public class TimerTrigger2
+    class TimerTrigger2
     {
         [FunctionName("TimerTrigger2")]
         public static void Run([TimerTrigger("*/2 * * * * *", RunOnStartup = true)]  ILogger log)

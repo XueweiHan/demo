@@ -3,7 +3,7 @@ using System.Runtime.Loader;
 
 namespace FunctionRunner
 {
-    internal class FunctionLoadContext : AssemblyLoadContext
+    class FunctionLoadContext : AssemblyLoadContext
     {
         readonly AssemblyDependencyResolver _resolver;
 

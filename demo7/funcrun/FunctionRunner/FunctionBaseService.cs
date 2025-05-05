@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    internal class FunctionBaseService : BackgroundService
+    class FunctionBaseService : BackgroundService
     {
         readonly ILogger<FunctionBaseService>? _logger;
 
