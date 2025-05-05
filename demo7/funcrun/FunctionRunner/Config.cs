@@ -14,8 +14,8 @@ namespace FunctionRunner
     class Secret
     {
         public required string Name { get; set; }
-        public string? StorePath { get; set; }
-        public string? EnvVarName { get; set; }
+        public string? FilePath { get; set; }
+        public string? EnvVar { get; set; }
     }
 
     class CopyFile
@@ -75,14 +75,14 @@ namespace FunctionRunner
         {
             var resp = await client.GetSecretAsync(secret.Name);
 
-            if (!string.IsNullOrEmpty(secret.EnvVarName))
+            if (!string.IsNullOrEmpty(secret.EnvVar))
             {
-                Environment.SetEnvironmentVariable(secret.EnvVarName, resp.Value.Value);
+                Environment.SetEnvironmentVariable(secret.EnvVar, resp.Value.Value);
             }
 
-            if (!string.IsNullOrEmpty(secret.StorePath))
+            if (!string.IsNullOrEmpty(secret.FilePath))
             {
-                await File.WriteAllTextAsync(secret.StorePath, resp.Value.Value);
+                await File.WriteAllTextAsync(secret.FilePath, resp.Value.Value);
             }
         }
 

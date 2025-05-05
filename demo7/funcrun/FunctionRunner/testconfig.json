@@ -7,7 +7,7 @@
         {
           "Name": "<secret-name>",
           "FilePath": "<store-secret-to-local-file-path>",
-          "EnvVarName": "<store-secret-to-environment-variable>"
+          "EnvVar": "<store-secret-to-environment-variable>"
         }
       ]
     }
