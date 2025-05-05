@@ -10,7 +10,7 @@ namespace FunctionRunner
 
         public HTTPService()
         {
-            var portStr = Environment.GetEnvironmentVariable("FuctionRunnerHttpPort");
+            var portStr = Environment.GetEnvironmentVariable("FunctionRunnerHttpPort");
             _port = int.TryParse(portStr, out var port) ? port : 8080;
 
             _httpListener = new HttpListener();

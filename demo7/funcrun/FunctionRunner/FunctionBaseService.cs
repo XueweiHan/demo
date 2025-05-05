@@ -3,19 +3,11 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    class FunctionBaseService : BackgroundService
+    class FunctionBaseService(FunctionInfo funcInfo, ILogger<FunctionBaseService>? logger) : BackgroundService
     {
-        readonly ILogger<FunctionBaseService>? _logger;
-
-        protected FunctionInfo _funcInfo;
-        protected FunctionBinding _binding;
-
-        public FunctionBaseService(FunctionInfo funcInfo, ILogger<FunctionBaseService>? logger)
-        {
-            _funcInfo = funcInfo;
-            _logger = logger;
-            _binding = _funcInfo.Function.Bindings[0];
-        }
+        protected readonly FunctionInfo _funcInfo = funcInfo;
+        protected readonly ILogger<FunctionBaseService>? _logger = logger;
+        protected readonly FunctionBinding _binding = funcInfo.Function.Bindings[0];
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
