@@ -8,6 +8,8 @@ namespace FunctionRunner
     {
         static async Task Main(string[] args)
         {
+            await Config.LoadAsync();
+
             var functionInfos = FunctionInfo.Load();
 
             using var host = Host.CreateDefaultBuilder(args)
