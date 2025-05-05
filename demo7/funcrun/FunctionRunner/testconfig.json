@@ -1,0 +1,20 @@
+{
+  "Keyvaults": [
+    {
+      "Name": "<keyvault-name>",
+      "Secrets": [
+        {
+          "Name": "<secret-name>",
+          "FilePath": "<store-secret-to-local-file-path>",
+          "EnvVarName": "<store-secret-to-environment-variable>"
+        }
+      ]
+    }
+  ],
+  "CopyFiles": [
+    {
+      "From": "<source-path>",
+      "To": "<destination-path>"
+    }
+  ]
+}
