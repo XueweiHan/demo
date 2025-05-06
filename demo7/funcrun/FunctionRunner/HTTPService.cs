@@ -3,24 +3,22 @@ using System.Net;
 
 namespace FunctionRunner
 {
-    class HTTPService : BackgroundService
+    class HTTPService(AppSettings appSettings) : BackgroundService
     {
-        readonly HttpListener _httpListener;
-        readonly int _port = 8080;
+        readonly HttpListener _httpListener = new();
+        readonly int _port = appSettings.FunctionRunnerHttpPort;
 
-        public HTTPService()
+        public override void Dispose()
         {
-            var portStr = Environment.GetEnvironmentVariable("FunctionRunnerHttpPort");
-            _port = int.TryParse(portStr, out var port) ? port : 8080;
-
-            _httpListener = new HttpListener();
-            _httpListener.Prefixes.Add($"http://localhost:{_port}/");
+            _httpListener.Close();
+            base.Dispose();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var name = $"{ConsoleColor.Yellow}HTTPService{ConsoleColor.Default}";
             Console.WriteLine($"[{name} is listening on http://localhost:{_port}/ at {DateTime.UtcNow:u}]");
+            _httpListener.Prefixes.Add($"http://localhost:{_port}/");
 
             try
             {

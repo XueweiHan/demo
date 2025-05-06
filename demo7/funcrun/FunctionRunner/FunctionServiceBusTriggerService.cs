@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger<FunctionBaseService> logger)
+    class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger<FunctionBaseService>? logger)
         : FunctionBaseService(funcInfo, logger)
     {
-        readonly string _fullyQualifiedNamespace = Environment.GetEnvironmentVariable(funcInfo.Function.Bindings[0].Connection + "__fullyQualifiedNamespace") ?? string.Empty;
+        readonly string _fullyQualifiedNamespace = funcInfo.FullyQualifiedNamespace();
 
         public override void PrintFunctionInfo(bool u)
         {
@@ -26,7 +26,7 @@ namespace FunctionRunner
 
             PrintStatus(FunctionAction.Start);
 
-            var client = new ServiceBusClient(
+            await using var client = new ServiceBusClient(
                 _fullyQualifiedNamespace,
                 new DefaultAzureCredential(),
                 new ServiceBusClientOptions()

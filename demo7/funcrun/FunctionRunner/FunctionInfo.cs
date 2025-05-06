@@ -29,12 +29,6 @@ namespace FunctionRunner
         readonly MethodInfo _method = method;
         readonly TimeSpan _timeout = timeout;
 
-        public bool IsDisabled()
-        {
-            var disabled = Environment.GetEnvironmentVariable($"AzureWebJobs.{Name}.Disabled");
-            return bool.TryParse(disabled, out var isDisabled) && isDisabled;
-        }
-
         public async Task<bool> InvokeAsync(object?[] parameters)
         {
             bool success = false;
@@ -101,16 +95,9 @@ namespace FunctionRunner
             }
         }
 
-        public static List<FunctionInfo> Load()
+        public static List<FunctionInfo> Load(string root)
         {
             var funcInfos = new List<FunctionInfo>();
-
-            var root = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
-            if (string.IsNullOrEmpty(root))
-            {
-                Console.Error.WriteLine("AzureWebJobsScriptRoot is not set.");
-                return funcInfos;
-            }
 
             var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
             foreach (var file in functionJsonFiles)

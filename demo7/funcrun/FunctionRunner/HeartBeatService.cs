@@ -2,8 +2,10 @@
 
 namespace FunctionRunner
 {
-    class HeartBeatService : BackgroundService
+    class HeartBeatService(AppSettings appSettings) : BackgroundService
     {
+        readonly TimeSpan _heartbeatLogInterval = TimeSpan.FromSeconds(appSettings.HeartbeatLogIntervalInSeconds);
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var name = $"{ConsoleColor.Yellow}HeartBeatService{ConsoleColor.Default}";
@@ -14,7 +16,7 @@ namespace FunctionRunner
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     Console.WriteLine($"{DateTime.UtcNow:u} pod heartbeat {Environment.MachineName}");
-                    await Task.Delay(60 * 1000, stoppingToken);
+                    await Task.Delay(_heartbeatLogInterval, stoppingToken);
                 }
             }
             finally

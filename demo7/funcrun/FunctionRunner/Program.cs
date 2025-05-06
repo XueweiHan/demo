@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -8,19 +9,39 @@ namespace FunctionRunner
     {
         static async Task Main(string[] args)
         {
-            await Config.LoadAsync();
-
-            var functionInfos = FunctionInfo.Load();
+            AppSettings? appSettings = null;
 
             using var host = Host.CreateDefaultBuilder(args)
-                .ConfigureServices(services =>
+                .ConfigureAppConfiguration(config =>
                 {
-                    services.AddHostedService<HeartBeatService>();
-                    services.AddHostedService<HTTPService>();
-
-                    foreach (var info in functionInfos)
+                    config.AddJsonFile("appSettings.json", optional: true);
+                    config.AddEnvironmentVariables();
+                })
+                .ConfigureServices((ctx, services) =>
+                {
+                    appSettings = new AppSettings()
                     {
-                        AddFunctionService(services, info);
+                        ConfigJson = JsonHelper.GetEnvJson<Config>("CONFIG_JSON") ?? ctx.Configuration.GetSection("CONFIG_JSON").Get<Config>(),
+                        ConfigFile = ctx.Configuration.GetValue<string>("CONFIG_FILE"),
+                    };
+                    ctx.Configuration.Bind(appSettings);
+                    services.AddSingleton(appSettings);
+                    appSettings.ExecuteAsync().Wait();
+
+                    var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot!);
+                    foreach (var funcInfo in functionInfos)
+                    {
+                        AddFunctionService(services, funcInfo);
+                    }
+
+                    if (appSettings.FunctionRunnerHttpPort > 0)
+                    {
+                        services.AddHostedService<HTTPService>();
+                    }
+
+                    if (appSettings.HeartbeatLogIntervalInSeconds > 0)
+                    {
+                        services.AddHostedService<HeartBeatService>();
                     }
 
                     services.AddLogging(builder =>
@@ -31,7 +52,7 @@ namespace FunctionRunner
                 })
                 .ConfigureHostOptions(options =>
                 {
-                    options.ShutdownTimeout = TimeSpan.FromSeconds(20);
+                    options.ShutdownTimeout = TimeSpan.FromSeconds(appSettings!.ShutdownTimeoutInSeconds);
                 })
                 .Build();
 
@@ -40,27 +61,27 @@ namespace FunctionRunner
             Console.WriteLine("Exit.");
         }
 
-        static readonly Dictionary<string, Func<FunctionInfo, ILogger<FunctionBaseService>, IHostedService>> serviceMap = new()
+        static readonly Dictionary<string, Func<FunctionInfo, ILogger<FunctionBaseService>, FunctionBaseService>> serviceMap = new()
         {
             ["serviceBusTrigger"] = (funcInfo, logger) => new FunctionServiceBusTriggerService(funcInfo, logger),
             ["timerTrigger"] = (funcInfo, logger) => new FunctionTimerTriggerService(funcInfo, logger)
         };
 
-        static void AddFunctionService(IServiceCollection services, FunctionInfo info)
+        static void AddFunctionService(IServiceCollection services, FunctionInfo funcInfo)
         {
-            var type = info.Function.Bindings[0].Type;
+            var type = funcInfo.Function.Bindings[0].Type;
             if (serviceMap.TryGetValue(type, out var serviceFactory))
             {
                 services.AddSingleton(sp =>
                 {
-                    var service = serviceFactory(info, sp.GetRequiredService<ILogger<FunctionBaseService>>());
-                    ((FunctionBaseService)service).PrintFunctionInfo();
-                    return service;
+                    var service = serviceFactory(funcInfo, sp.GetRequiredService<ILogger<FunctionBaseService>>());
+                    service.PrintFunctionInfo();
+                    return (IHostedService)service;
                 });
             }
             else
             {
-                new FunctionBaseService(info, null).PrintFunctionInfo(true);
+                new FunctionBaseService(funcInfo, null).PrintFunctionInfo(true);
             }
         }
     }

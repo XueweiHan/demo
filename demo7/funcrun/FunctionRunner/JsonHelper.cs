@@ -10,10 +10,29 @@ namespace FunctionRunner
             PropertyNameCaseInsensitive = true
         };
 
-        public static T? Deserialize<T>(string json)
+        public static T? Deserialize<T>(string? json)
         {
+            if (string.IsNullOrEmpty(json))
+            {
+                return default;
+            }
+
             json = Regex.Replace(json, @"//.*?$", "", RegexOptions.Multiline);
             return JsonSerializer.Deserialize<T>(json, DeserializeOptions);
+        }
+
+        public static T? GetEnvJson<T>(string envName)
+        {
+            return Deserialize<T>(Environment.GetEnvironmentVariable(envName));
+        }
+
+        public static void PrintJson<T>(T obj)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(obj, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            }));
         }
     }
 }

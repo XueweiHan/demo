@@ -3,11 +3,15 @@
     "FunctionRunner": {
       "commandName": "Project",
       "environmentVariables": {
-        "AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\Functions\\bin\\Debug\\net6.0",
+        "_AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\Functions\\bin\\Debug\\net6.0",
+        "CONFIG_FILE": " ",
+        "CONFIG_JSON": "{\"Keyvaults\":[]}",
+
+
+
         "ServiceBusConnection1__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
         "ServiceBusConnection2__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
-        "AzureWebJobs.TimerTrigger2.Disabled": "false",
-        "___CONFIG_PATH": "C:\\repos\\demo\\demo7\\funcrun\\FunctionRunner\\testconfig.json"
+        "AzureWebJobs.TimerTrigger2.Disabled": "true"
       }
     }
   }

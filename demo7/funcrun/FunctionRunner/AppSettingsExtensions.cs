@@ -3,56 +3,35 @@ using Azure.Security.KeyVault.Secrets;
 
 namespace FunctionRunner
 {
-    class Keyvault
+    static class AppSettingsExtensions
     {
-        public required string Name { get; set; }
-        public Secret[]? Secrets { get; set; }
-        // public VaultObject[]? Certificates { get; set; }
-        // public VaultObject[]? Keys { get; set; }
-    }
-
-    class Secret
-    {
-        public required string Name { get; set; }
-        public string? FilePath { get; set; }
-        public string? EnvVar { get; set; }
-    }
-
-    class CopyFile
-    {
-        public required string From { get; set; }
-        public required string To { get; set; }
-    }
-
-    class Config
-    {
-        public Keyvault[]? Keyvaults { get; set; }
-        public CopyFile[]? CopyFiles { get; set; }
-
-        public static async Task LoadAsync()
+        public static async Task ExecuteAsync(this AppSettings appSettings)
         {
-            var json = Environment.GetEnvironmentVariable("CONFIG_JSON");
-            if (!string.IsNullOrEmpty(json))
+            if (appSettings.PrintConfigJson)
             {
-                await ConfigLoadHelper.LoadAsync(json);
+                JsonHelper.PrintJson(appSettings);
             }
 
-            var path = Environment.GetEnvironmentVariable("CONFIG_PATH");
-            if (!string.IsNullOrEmpty(path))
+            if (!string.IsNullOrWhiteSpace(appSettings.ConfigFile))
             {
-                json = File.ReadAllText(path);
-                await ConfigLoadHelper.LoadAsync(json);
+                var json = File.ReadAllText(appSettings.ConfigFile);
+                var config = JsonHelper.Deserialize<Config>(json);
+                if (appSettings.PrintConfigJson)
+                {
+                    JsonHelper.PrintJson(config);
+                }
+
+                await ExecuteConfigAsync(config!);
+            }
+
+            if (appSettings.ConfigJson != null)
+            {
+                await ExecuteConfigAsync(appSettings.ConfigJson);
             }
         }
-    }
 
-    static class ConfigLoadHelper
-    {
-        public static async Task LoadAsync(string configJson)
+        static async Task ExecuteConfigAsync(Config config)
         {
-            var config = JsonHelper.Deserialize<Config>(configJson);
-            //Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions() { WriteIndented = true }));
-
             await LoadKeyvaultAsync(config!.Keyvaults);
             CopyFiles(config!.CopyFiles);
         }
@@ -78,11 +57,13 @@ namespace FunctionRunner
             if (!string.IsNullOrEmpty(secret.EnvVar))
             {
                 Environment.SetEnvironmentVariable(secret.EnvVar, resp.Value.Value);
+                Console.WriteLine($"[Set secret {secret.Name} to environment variable {secret.EnvVar}]");
             }
 
             if (!string.IsNullOrEmpty(secret.FilePath))
             {
                 await File.WriteAllTextAsync(secret.FilePath, resp.Value.Value);
+                Console.WriteLine($"[Write secret {secret.Name} to file {secret.FilePath}]");
             }
         }
 
@@ -91,6 +72,7 @@ namespace FunctionRunner
             foreach (var cp in copyFiles ?? [])
             {
                 File.Copy(cp.From, cp.To, overwrite: true);
+                Console.WriteLine($"[Copy file from {cp.From} to {cp.To}]");
             }
         }
     }
