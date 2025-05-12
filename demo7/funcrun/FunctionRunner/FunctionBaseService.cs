@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    class FunctionBaseService(FunctionInfo funcInfo, ILogger? logger) : BackgroundService
+    class FunctionBaseService(FunctionInfo funcInfo, ILogger logger) : BackgroundService
     {
         protected readonly FunctionInfo _funcInfo = funcInfo;
-        protected readonly ILogger? _logger = logger;
+        protected readonly ILogger _logger = logger;
         protected readonly FunctionBinding _binding = funcInfo.Function.Bindings[0];
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)

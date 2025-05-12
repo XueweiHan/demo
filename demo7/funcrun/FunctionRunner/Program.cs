@@ -70,7 +70,7 @@ namespace FunctionRunner
             Console.WriteLine("Exit.");
         }
 
-        static readonly Dictionary<string, Func<FunctionInfo, ILogger<FunctionBaseService>, FunctionBaseService>> serviceMap = new()
+        static readonly Dictionary<string, Func<FunctionInfo, ILogger, FunctionBaseService>> serviceMap = new()
         {
             ["serviceBusTrigger"] = (funcInfo, logger) => new FunctionServiceBusTriggerService(funcInfo, logger),
             ["timerTrigger"] = (funcInfo, logger) => new FunctionTimerTriggerService(funcInfo, logger)
@@ -83,7 +83,8 @@ namespace FunctionRunner
             {
                 services.AddSingleton<IHostedService>(sp =>
                 {
-                    var service = serviceFactory(funcInfo, sp.GetRequiredService<ILogger<FunctionBaseService>>());
+                    var service = serviceFactory(funcInfo, sp.GetRequiredService<ILoggerFactory>().CreateLogger(funcInfo.Function.EntryPoint));
+                    //var service = serviceFactory(funcInfo, sp.GetRequiredService<ILogger<FunctionBaseService>>());
                     service.PrintFunctionInfo();
                     return service;
                 });

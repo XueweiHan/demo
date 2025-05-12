@@ -65,7 +65,7 @@ namespace FunctionRunner
         {
             var ctor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First()!;
             var parameters = ctor.GetParameters()
-                .Select(p => _serviceProvider.GetService(p.ParameterType))// ?? throw new InvalidOperationException($"Unable to resolve {p.ParameterType}"))
+                .Select(p => _serviceProvider.GetService(p.ParameterType) ?? throw new InvalidOperationException($"Unable to resolve {p.ParameterType}"))
                 .ToArray();
             return ctor.Invoke(parameters)!;
         }
