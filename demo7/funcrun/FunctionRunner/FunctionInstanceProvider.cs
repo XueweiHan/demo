@@ -2,18 +2,19 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Reflection;
 
 namespace FunctionRunner
 {
-    class FunctionInstanceProvider
+    class FunctionInstanceProvider : IDisposable
     {
-        IServiceProvider _serviceProvider;
+        ServiceProvider _serviceProvider;
 
         public FunctionInstanceProvider(Assembly assembly, string root)
         {
-            var serviceCollection = new ServiceCollection();
+            var services = new ServiceCollection();
 
             var startupAttr = assembly.GetCustomAttributes().FirstOrDefault(a => a.GetType().Name == "FunctionsStartupAttribute");
             if (startupAttr != null)
@@ -27,7 +28,7 @@ namespace FunctionRunner
                     ApplicationRootPath = root,
                 };
                 var functionRunnerBuilder = new FunctionRunnerBuilder(
-                    serviceCollection, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));
+                    services, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));
 
                 startup.ConfigureAppConfiguration((IFunctionsConfigurationBuilder)functionRunnerBuilder);
 
@@ -36,16 +37,42 @@ namespace FunctionRunner
                 startup.Configure(functionRunnerBuilder);
             }
 
-            _serviceProvider = serviceCollection.BuildServiceProvider();
+            if (!services.Any(s => s.ServiceType == typeof(ILoggerFactory)))
+            {
+                services.AddLogging(loggingBuilder =>
+                {
+                    loggingBuilder.ClearProviders();
+                    loggingBuilder.SetMinimumLevel(LogLevel.Information);
+                    loggingBuilder.AddSimpleConsole(options =>
+                    {
+                        options.IncludeScopes = false;
+                        options.UseUtcTimestamp = true;
+                        options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff]";
+                        options.SingleLine = true;
+                    });
+                });
+            }
+
+            _serviceProvider = services.BuildServiceProvider();
+        }
+
+        public ILoggerFactory GetLoggerFactory()
+        {
+            return _serviceProvider.GetService<ILoggerFactory>()!;
         }
 
         public object Create(Type type)
         {
             var ctor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First()!;
             var parameters = ctor.GetParameters()
-                .Select(p => _serviceProvider.GetService(p.ParameterType) ?? throw new InvalidOperationException($"Unable to resolve {p.ParameterType}"))
+                .Select(p => _serviceProvider.GetService(p.ParameterType))// ?? throw new InvalidOperationException($"Unable to resolve {p.ParameterType}"))
                 .ToArray();
             return ctor.Invoke(parameters)!;
+        }
+
+        public void Dispose()
+        {
+            _serviceProvider?.Dispose();
         }
     }
 

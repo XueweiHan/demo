@@ -13,24 +13,13 @@ namespace FunctionRunner
         static async Task Main(string[] args)
         {
             var appSettings = new AppSettings();
+            ILoggerFactory? loggerFactory = null;
 
             using var host = Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration(config =>
                 {
                     config.AddJsonFile("appSettings.json", optional: true);
                     config.AddEnvironmentVariables();
-                })
-                .ConfigureLogging(logging =>
-                {
-                    logging.ClearProviders();
-                    logging.AddSimpleConsole(options =>
-                    {
-                        options.IncludeScopes = false;
-                        options.UseUtcTimestamp = true;
-                        options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
-                        options.SingleLine = true;
-                    });
-                    logging.SetMinimumLevel(LogLevel.Information);
                 })
                 .ConfigureServices((ctx, services) =>
                 {
@@ -40,14 +29,14 @@ namespace FunctionRunner
 
                     if (!appSettings.DisableFunctionRunner && !string.IsNullOrEmpty(appSettings.AzureWebJobsScriptRoot))
                     {
-                        var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
+                        var (functionInfos, instanceProviders) = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
+                        loggerFactory = instanceProviders.Select(ip => ip.GetLoggerFactory()).FirstOrDefault(lf => lf != null);
+
                         foreach (var funcInfo in functionInfos)
                         {
                             AddFunctionServices(services, funcInfo);
                         }
                     }
-
-                    AddExecutableServices(services, appSettings.ConfigJson?.Executables);
 
                     if (appSettings.FunctionRunnerHttpPort > 0)
                     {
@@ -58,6 +47,17 @@ namespace FunctionRunner
                     {
                         services.AddHostedService<HeartBeatService>();
                     }
+
+                    AddExecutableServices(services, appSettings.ConfigJson?.Executables);
+                })
+                .ConfigureLogging(loggingBuilder =>
+                {
+                    if (loggerFactory != null)
+                    {
+                        loggingBuilder.ClearProviders();
+                        loggingBuilder.AddProvider(new LoggerFactoryAdapter(loggerFactory));
+                    }
+
                 })
                 .ConfigureHostOptions(options =>
                 {
@@ -81,11 +81,11 @@ namespace FunctionRunner
             var type = funcInfo.Function.Bindings[0].Type;
             if (serviceMap.TryGetValue(type, out var serviceFactory))
             {
-                services.AddSingleton(sp =>
+                services.AddSingleton<IHostedService>(sp =>
                 {
                     var service = serviceFactory(funcInfo, sp.GetRequiredService<ILogger<FunctionBaseService>>());
                     service.PrintFunctionInfo();
-                    return (IHostedService)service;
+                    return service;
                 });
             }
             else
@@ -98,7 +98,7 @@ namespace FunctionRunner
         {
             foreach (var executable in executables ?? [])
             {
-                services.AddSingleton(sp => (IHostedService)new ExecutableService(executable.Exec, executable.Args,
+                services.AddSingleton<IHostedService>(sp => new ExecutableService(executable.Exec, executable.Args,
                     sp.GetRequiredService<ILogger<ExecutableService>>()));
             }
         }

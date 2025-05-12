@@ -26,7 +26,15 @@ namespace FunctionApp
             // Register the logger
             builder.Services.AddLogging(loggingBuilder =>
             {
-                loggingBuilder.AddFilter("*", LogLevel.Debug);
+                loggingBuilder.SetMinimumLevel(LogLevel.Information);
+                loggingBuilder.AddFilter("FunctionApp", LogLevel.Debug);
+                loggingBuilder.AddSimpleConsole(options =>
+                {
+                    options.IncludeScopes = false;
+                    options.UseUtcTimestamp = true;
+                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff]";
+                    options.SingleLine = true;
+                });
             });
         }
 
@@ -59,7 +67,7 @@ namespace FunctionApp
     {
         public string SayHello(string name)
         {
-            return $"================ Hello from {name} ==================";
+            return $"Hello from {name}";
         }
     }
 
@@ -79,21 +87,23 @@ namespace FunctionApp
         [FunctionName("Function1_timer")]
         public void Run([TimerTrigger("*/2 * * * * *")] TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation($"<<<<C# Timer trigger function executed at: {DateTime.Now}>>>>>");
-            _logger.LogInformation($">>>>>>>>> {_hello.SayHello(_settings.Name)} <<<<<<<");
+            log.LogInformation($"================= Logger From function parameter");
+            _logger.LogInformation($"================= Logger From class ID {_hello.SayHello(_settings.Name)}");
 
-            log.LogDebug("debug1");
-            _logger.LogDebug("debug2");
+            log.LogDebug(">>>>>>>>>>>>> debug1 <<<<<<<<<<<<<<<");
+            _logger.LogDebug(">>>>>>>>>>>>> debug2 <<<<<<<<<<<<<<<");
         }
     }
 
     class Function2
     {
         readonly ILogger<Function2> _logger;
-        public Function2(IHello hello, ILogger<Function2> logger, Settings settings)
+
+        public Function2(ILogger<Function2> logger)
         {
             _logger = logger;
         }
+
         [FunctionName("Function2_timer")]
         [Timeout("00:00:01")]
         public async Task Run([TimerTrigger("*/3 * * * * *")] TimerInfo myTimer, CancellationToken cancel)
@@ -104,7 +114,7 @@ namespace FunctionApp
         }
     }
 
-    public class Function3
+    class Function3
     {
         [FunctionName("Function3_sb_queue")]
         public Task Run([ServiceBusTrigger("queue1", Connection = "MyServiceBusConnection")] string myQueueItem, ILogger log, CancellationToken cancell)

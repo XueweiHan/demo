@@ -93,13 +93,13 @@ namespace FunctionRunner
             }
         }
 
-        public static List<FunctionInfo> Load(string root)
+        public static (List<FunctionInfo>, List<FunctionInstanceProvider>) Load(string root)
         {
             root = Path.GetFullPath(root);
             Directory.SetCurrentDirectory(root);
-
-            var dllToServiceProviderDict = new Dictionary<string, FunctionInstanceProvider>();
             var funcInfos = new List<FunctionInfo>();
+
+            var pathToInstanceProvider = new Dictionary<string, FunctionInstanceProvider>();
 
             var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
             foreach (var file in functionJsonFiles)
@@ -116,10 +116,10 @@ namespace FunctionRunner
                 var targetType = assembly.GetType(typeName)!;
                 var method = targetType.GetMethod(methodName)!;
 
-                if (!dllToServiceProviderDict.TryGetValue(dllPath, out var instanceProvider))
+                if (!pathToInstanceProvider.TryGetValue(dllPath, out var instanceProvider))
                 {
                     instanceProvider = new FunctionInstanceProvider(assembly, root);
-                    dllToServiceProviderDict[dllPath] = instanceProvider;
+                    pathToInstanceProvider[dllPath] = instanceProvider;
                 }
 
                 var instance = instanceProvider.Create(targetType);
@@ -133,7 +133,7 @@ namespace FunctionRunner
                     timeout: GetFunctionTimeout(method)));
             }
 
-            return funcInfos;
+            return (funcInfos, pathToInstanceProvider.Values.ToList());
         }
 
         static TimeSpan GetFunctionTimeout(MethodInfo method)
