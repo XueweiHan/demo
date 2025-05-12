@@ -3,7 +3,6 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 
 [assembly: FunctionsStartup(typeof(FunctionApp.Startup))]
 
@@ -33,13 +32,12 @@ namespace FunctionApp
 
         public override void ConfigureAppConfiguration(IFunctionsConfigurationBuilder builder)
         {
-            var currentDirectory = Directory.GetCurrentDirectory();
             var ctx = builder.GetContext();
-            Console.WriteLine(ctx.ApplicationRootPath);
 
             builder.ConfigurationBuilder
-                .AddJsonFile(Path.Combine(currentDirectory, "settings.json"), optional: true, reloadOnChange: true)
-                .AddJsonFile(Path.Combine(currentDirectory, "settings.prod.json"), optional: true, reloadOnChange: true)
+                .SetBasePath(ctx.ApplicationRootPath)
+                .AddJsonFile("settings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile("settings.prod.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables();
 
             base.ConfigureAppConfiguration(builder);

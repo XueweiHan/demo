@@ -95,6 +95,7 @@ namespace FunctionRunner
 
         public static List<FunctionInfo> Load(string root)
         {
+            root = Path.GetFullPath(root);
             Directory.SetCurrentDirectory(root);
 
             var dllToServiceProviderDict = new Dictionary<string, FunctionInstanceProvider>();
@@ -117,7 +118,7 @@ namespace FunctionRunner
 
                 if (!dllToServiceProviderDict.TryGetValue(dllPath, out var instanceProvider))
                 {
-                    instanceProvider = new FunctionInstanceProvider(assembly);
+                    instanceProvider = new FunctionInstanceProvider(assembly, root);
                     dllToServiceProviderDict[dllPath] = instanceProvider;
                 }
 

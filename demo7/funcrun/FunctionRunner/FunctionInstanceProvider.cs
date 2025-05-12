@@ -11,7 +11,7 @@ namespace FunctionRunner
     {
         IServiceProvider _serviceProvider;
 
-        public FunctionInstanceProvider(Assembly assembly)
+        public FunctionInstanceProvider(Assembly assembly, string root)
         {
             var serviceCollection = new ServiceCollection();
 
@@ -24,7 +24,7 @@ namespace FunctionRunner
                 var webJobsBuilderContext = new WebJobsBuilderContext()
                 {
                     EnvironmentName = "Development",
-                    ApplicationRootPath = Directory.GetCurrentDirectory(),
+                    ApplicationRootPath = root,
                 };
                 var functionRunnerBuilder = new FunctionRunnerBuilder(
                     serviceCollection, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));

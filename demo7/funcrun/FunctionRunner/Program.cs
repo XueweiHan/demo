@@ -20,6 +20,18 @@ namespace FunctionRunner
                     config.AddJsonFile("appSettings.json", optional: true);
                     config.AddEnvironmentVariables();
                 })
+                .ConfigureLogging(logging =>
+                {
+                    logging.ClearProviders();
+                    logging.AddSimpleConsole(options =>
+                    {
+                        options.IncludeScopes = false;
+                        options.UseUtcTimestamp = true;
+                        options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
+                        options.SingleLine = true;
+                    });
+                    logging.SetMinimumLevel(LogLevel.Information);
+                })
                 .ConfigureServices((ctx, services) =>
                 {
                     ctx.Configuration.Bind(appSettings);
@@ -46,18 +58,6 @@ namespace FunctionRunner
                     {
                         services.AddHostedService<HeartBeatService>();
                     }
-
-                    services.AddLogging(builder =>
-                    {
-                        builder.AddSimpleConsole(options =>
-                        {
-                            options.IncludeScopes = false;
-                            options.UseUtcTimestamp = true;
-                            options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
-                            options.SingleLine = true;
-                        });
-                        builder.SetMinimumLevel(LogLevel.Information);
-                    });
                 })
                 .ConfigureHostOptions(options =>
                 {
