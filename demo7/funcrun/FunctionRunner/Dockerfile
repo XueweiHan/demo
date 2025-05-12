@@ -12,7 +12,6 @@ RUN dotnet publish *.csproj -c $configuration -o /publish
 FROM mcr.microsoft.com/dotnet/runtime:${dotnet_image_tag}
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot
-# ENV FuctionRunnerHttpPort=80
 
 COPY --from=build /publish /app
 

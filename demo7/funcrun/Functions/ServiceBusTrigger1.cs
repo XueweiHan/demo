@@ -9,13 +9,13 @@ namespace Functions
     {
         [FunctionName("ServiceBusTrigger1")]
         [Timeout("00:00:10")]
-        public async Task RunAsync([ServiceBusTrigger("queue1", Connection = "ServiceBusConnection1")] string myQueueItem, ILogger log, CancellationToken cancellationToken)
+        public async Task RunAsync([ServiceBusTrigger("queue1", Connection = "ServiceBusConnection1")] string myQueueItem,  CancellationToken cancellationToken)
         {
-            log.LogInformation($"[{myQueueItem}] received");
-            log.LogWarning($"[{myQueueItem}] warning");
+            //log.LogInformation($"[{myQueueItem}] received");
+            //log.LogWarning($"[{myQueueItem}] warning");
             await Task.Delay(5000);
-            log.LogError($"[{myQueueItem}] error");
-            log.LogCritical($"[{myQueueItem}] critial");
+            //log.LogError($"[{myQueueItem}] error");
+            //log.LogCritical($"[{myQueueItem}] critial");
 
             //if (myQueueItem.StartsWith("Message 2"))
             //{

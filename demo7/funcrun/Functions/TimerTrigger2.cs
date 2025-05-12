@@ -7,12 +7,12 @@ namespace Functions
     class TimerTrigger2
     {
         [FunctionName("TimerTrigger2")]
-        public static void Run([TimerTrigger("*/2 * * * * *", RunOnStartup = true)]  ILogger log)
+        public static void Run([TimerTrigger("*/2 * * * * *", RunOnStartup = true)] TimerInfo myTimer)
         {
             //throw new System.Exception("TimerTrigger2 exception");
-            log.LogWarning($"TimerTrigger2 start     >>");
+            //log.LogWarning($"TimerTrigger2 start     >>");
             Thread.Sleep(1000);
-            log.LogWarning($"TimerTrigger2 end       <<");
+            //log.LogWarning($"TimerTrigger2 end       <<");
         }
     }
 }

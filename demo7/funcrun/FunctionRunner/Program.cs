@@ -3,13 +3,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+//<PublishSingleFile>true</PublishSingleFile>
+//<SelfContained>true</SelfContained>
+
 namespace FunctionRunner
 {
     class Program
     {
         static async Task Main(string[] args)
         {
-            AppSettings? appSettings = null;
+            var appSettings = new AppSettings();
 
             using var host = Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration(config =>
@@ -19,20 +22,20 @@ namespace FunctionRunner
                 })
                 .ConfigureServices((ctx, services) =>
                 {
-                    appSettings = new AppSettings()
-                    {
-                        ConfigJson = JsonHelper.GetEnvJson<Config>("CONFIG_JSON") ?? ctx.Configuration.GetSection("CONFIG_JSON").Get<Config>(),
-                        ConfigFile = ctx.Configuration.GetValue<string>("CONFIG_FILE"),
-                    };
                     ctx.Configuration.Bind(appSettings);
                     services.AddSingleton(appSettings);
-                    appSettings.ExecuteAsync().Wait();
+                    appSettings.ExecuteAsync(ctx.Configuration).Wait();
 
-                    var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot!);
-                    foreach (var funcInfo in functionInfos)
+                    if (!appSettings.DisableFunctionRunner && !string.IsNullOrEmpty(appSettings.AzureWebJobsScriptRoot))
                     {
-                        AddFunctionService(services, funcInfo);
+                        var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
+                        foreach (var funcInfo in functionInfos)
+                        {
+                            AddFunctionServices(services, funcInfo);
+                        }
                     }
+
+                    AddExecutableServices(services, appSettings.ConfigJson?.Executables);
 
                     if (appSettings.FunctionRunnerHttpPort > 0)
                     {
@@ -46,13 +49,19 @@ namespace FunctionRunner
 
                     services.AddLogging(builder =>
                     {
-                        builder.AddConsole();
+                        builder.AddSimpleConsole(options =>
+                        {
+                            options.IncludeScopes = false;
+                            options.UseUtcTimestamp = true;
+                            options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
+                            options.SingleLine = true;
+                        });
                         builder.SetMinimumLevel(LogLevel.Information);
                     });
                 })
                 .ConfigureHostOptions(options =>
                 {
-                    options.ShutdownTimeout = TimeSpan.FromSeconds(appSettings!.ShutdownTimeoutInSeconds);
+                    options.ShutdownTimeout = TimeSpan.FromSeconds(appSettings.ShutdownTimeoutInSeconds);
                 })
                 .Build();
 
@@ -67,7 +76,7 @@ namespace FunctionRunner
             ["timerTrigger"] = (funcInfo, logger) => new FunctionTimerTriggerService(funcInfo, logger)
         };
 
-        static void AddFunctionService(IServiceCollection services, FunctionInfo funcInfo)
+        static void AddFunctionServices(IServiceCollection services, FunctionInfo funcInfo)
         {
             var type = funcInfo.Function.Bindings[0].Type;
             if (serviceMap.TryGetValue(type, out var serviceFactory))
@@ -82,6 +91,15 @@ namespace FunctionRunner
             else
             {
                 new FunctionBaseService(funcInfo, null).PrintFunctionInfo(true);
+            }
+        }
+
+        static void AddExecutableServices(IServiceCollection services, Executable[]? executables)
+        {
+            foreach (var executable in executables ?? [])
+            {
+                services.AddSingleton(sp => (IHostedService)new ExecutableService(executable.Exec, executable.Args,
+                    sp.GetRequiredService<ILogger<ExecutableService>>()));
             }
         }
     }

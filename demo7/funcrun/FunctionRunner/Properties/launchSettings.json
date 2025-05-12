@@ -3,10 +3,12 @@
     "FunctionRunner": {
       "commandName": "Project",
       "environmentVariables": {
-        "_AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\Functions\\bin\\Debug\\net6.0",
+        "--AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\Functions\\bin\\Debug\\net6.0",
         "CONFIG_FILE": " ",
         "CONFIG_JSON": "{\"Keyvaults\":[]}",
 
+
+        "MyServiceBusConnection__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
 
 
         "ServiceBusConnection1__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",

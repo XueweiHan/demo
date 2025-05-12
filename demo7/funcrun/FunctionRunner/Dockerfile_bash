@@ -1,0 +1,45 @@
+FROM mcr.microsoft.com/azure-functions/dotnet:4-dotnet8.0 AS base
+
+################################################################################
+# build stage
+FROM base AS build
+
+# create the startup script
+COPY <<'EOF' /start.sh
+#!/bin/bash
+
+azurite -s -l /azurite/db &
+
+heartbeat() {
+    while true; do
+        echo "$(date +'%Y-%m-%d %H:%M:%S') pod heartbeat from $HOSTNAME"
+        sleep 60
+    done
+}
+
+heartbeat &
+
+echo "$(date +'%Y-%m-%d %H:%M:%S') Starting the Azure Function"
+/opt/startup/start_nonappservice.sh
+
+EOF
+RUN chmod +x /start.sh
+
+################################################################################
+# final stage
+FROM base AS final
+
+WORKDIR /home/site/wwwroot
+
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
+    AzureWebJobsStorage=UseDevelopmentStorage=true \
+    FUNCTIONS_WORKER_RUNTIME=dotnet \
+    AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+
+RUN apt-get update && \
+    apt-get install -y nodejs npm && \
+    npm install -g azurite
+
+COPY --from=build /start.sh /start.sh
+
+CMD [ "/start.sh" ]

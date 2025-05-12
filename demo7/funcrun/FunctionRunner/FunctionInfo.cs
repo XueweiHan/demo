@@ -13,7 +13,6 @@ namespace FunctionRunner
 
     class FunctionDefinition
     {
-        //public required bool Disabled { get; set; }
         public required string EntryPoint { get; set; }
         public required string ScriptFile { get; set; }
         public required FunctionBinding[] Bindings { get; set; }
@@ -34,11 +33,6 @@ namespace FunctionRunner
             bool success = false;
 
             var name = $"{ConsoleColor.Cyan}{Name}{ConsoleColor.Default}";
-            //if (IsDisabled())
-            //{
-            //    Console.WriteLine($"[{name} is  {ConsoleBackgroundColor.Red}skipped{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}]");
-            //    return false;
-            //}
 
             Console.WriteLine($"[{name} is triggered at {DateTime.UtcNow:u}]");
 
@@ -67,6 +61,10 @@ namespace FunctionRunner
                     catch (OperationCanceledException)
                     {
                         Console.WriteLine($"[{name} is cancelled at {DateTime.UtcNow:u}]");
+                    }
+                    finally
+                    {
+                        parameters[cancelTokenIndex] = originalToken;
                     }
                 }
                 else
@@ -97,6 +95,9 @@ namespace FunctionRunner
 
         public static List<FunctionInfo> Load(string root)
         {
+            Directory.SetCurrentDirectory(root);
+
+            var dllToServiceProviderDict = new Dictionary<string, FunctionInstanceProvider>();
             var funcInfos = new List<FunctionInfo>();
 
             var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
@@ -110,39 +111,35 @@ namespace FunctionRunner
                 var typeName = Path.GetFileNameWithoutExtension(function.EntryPoint);
                 var methodName = Path.GetExtension(function.EntryPoint).TrimStart('.');
 
-                var dll = LoadFunction(dllPath);
-                var type = dll.GetType(typeName);
-                if (type == null)
+                var assembly = Assembly.LoadFrom(dllPath);
+                var targetType = assembly.GetType(typeName)!;
+                var method = targetType.GetMethod(methodName)!;
+
+                if (!dllToServiceProviderDict.TryGetValue(dllPath, out var instanceProvider))
                 {
-                    Console.Error.WriteLine($"Type {typeName} not found in assembly {dllPath}.");
-                    continue;
+                    instanceProvider = new FunctionInstanceProvider(assembly);
+                    dllToServiceProviderDict[dllPath] = instanceProvider;
                 }
 
-                dynamic? instance = Activator.CreateInstance(type);
-                var method = type.GetMethod(methodName);
-                if (method != null && instance != null)
-                {
-                    var timeoutAttribute = method?.GetCustomAttributes()
-                        .FirstOrDefault(a => a.GetType().FullName == "Microsoft.Azure.WebJobs.TimeoutAttribute");
-                    var timeout = (TimeSpan)(timeoutAttribute?.GetType().GetProperty("Timeout")?.GetValue(timeoutAttribute) ?? TimeSpan.Zero);
+                var instance = instanceProvider.Create(targetType);
 
-                    funcInfos.Add(new FunctionInfo(
-                        function!,
-                        instance!,
-                        method!,
-                        method!.GetParameters().ToArray()!,
-                        Path.GetFileName(Path.GetDirectoryName(file))!,
-                        timeout));
-                }
+                funcInfos.Add(new FunctionInfo(
+                    function: function,
+                    instance: instance,
+                    method: method,
+                    parameters: method.GetParameters().ToArray()!,
+                    name: Path.GetFileName(Path.GetDirectoryName(file))!,
+                    timeout: GetFunctionTimeout(method)));
             }
 
             return funcInfos;
         }
 
-        static Assembly LoadFunction(string functionBinaryLocation)
+        static TimeSpan GetFunctionTimeout(MethodInfo method)
         {
-            var loadContext = new FunctionLoadContext(functionBinaryLocation);
-            return loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(functionBinaryLocation)));
+            var timeoutAttribute = method.GetCustomAttributes()
+                .FirstOrDefault(a => a.GetType().FullName == "Microsoft.Azure.WebJobs.TimeoutAttribute");
+            return (TimeSpan)(timeoutAttribute?.GetType().GetProperty("Timeout")?.GetValue(timeoutAttribute) ?? TimeSpan.Zero);
         }
     }
 }

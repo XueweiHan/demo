@@ -3,7 +3,7 @@ using NCrontab;
 
 namespace FunctionRunner
 {
-    class FunctionTimerTriggerService(FunctionInfo funcInfo, ILogger<FunctionBaseService>? logger)
+    class FunctionTimerTriggerService(FunctionInfo funcInfo, ILogger<FunctionBaseService> logger)
         : FunctionBaseService(funcInfo, logger)
     {
         public override void PrintFunctionInfo(bool u)

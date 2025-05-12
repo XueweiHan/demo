@@ -1,12 +1,13 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    class FunctionBaseService(FunctionInfo funcInfo, ILogger<FunctionBaseService>? logger) : BackgroundService
+    class FunctionBaseService(FunctionInfo funcInfo, ILogger? logger) : BackgroundService
     {
         protected readonly FunctionInfo _funcInfo = funcInfo;
-        protected readonly ILogger<FunctionBaseService>? _logger = logger;
+        protected readonly ILogger? _logger = logger;
         protected readonly FunctionBinding _binding = funcInfo.Function.Bindings[0];
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,29 +26,18 @@ namespace FunctionRunner
 
         protected object?[] PrepareParameters(params object[]? arg)
         {
-            var list = new List<object>(arg ?? [])
+            var services = new ServiceCollection();
+            foreach (var a in arg ?? [])
             {
-                _logger!
-            };
-
-            var len = _funcInfo.Parameters.Length;
-            var parameters = new object?[len];
-
-            for (int i = 0; i < len; ++i)
-            {
-                var type = _funcInfo.Parameters[i].ParameterType;
-
-                foreach (var obj in list)
-                {
-                    if (type.IsAssignableFrom(obj.GetType()))
-                    {
-                        parameters[i] = obj;
-                        break;
-                    }
-                }
+                services.AddSingleton(a.GetType(), a);
             }
+            services.AddSingleton<ILogger>(_logger!);
 
-            return parameters;
+            using var serviceProvider = services.BuildServiceProvider();
+
+            return _funcInfo.Parameters
+                .Select(p => serviceProvider.GetService(p.ParameterType))
+                .ToArray();
         }
 
         protected enum FunctionAction

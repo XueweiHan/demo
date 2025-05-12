@@ -1,4 +1,6 @@
 # our own base image for azure functions in AKS
+# test in visual studio run azurite
+docker run --rm -p 10000-10002:10000-10002 mcr.microsoft.com/azure-storage/azurite
 
 # create azure function
 ```

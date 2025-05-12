@@ -1,12 +1,16 @@
 ﻿using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Configuration;
 
 namespace FunctionRunner
 {
     static class AppSettingsExtensions
     {
-        public static async Task ExecuteAsync(this AppSettings appSettings)
+        public static async Task ExecuteAsync(this AppSettings appSettings, IConfiguration cfg)
         {
+            appSettings.ConfigJson = JsonHelper.GetEnvJson<Config>("CONFIG_JSON") ?? cfg.GetSection("CONFIG_JSON").Get<Config>();
+            appSettings.ConfigFile = cfg.GetValue<string>("CONFIG_FILE");
+
             if (appSettings.PrintConfigJson)
             {
                 JsonHelper.PrintJson(appSettings);

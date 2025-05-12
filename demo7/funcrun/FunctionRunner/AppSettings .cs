@@ -4,15 +4,17 @@ namespace FunctionRunner
 {
     class AppSettings
     {
+        public bool DisableFunctionRunner { get; set; } = false;
+
         public string? AzureWebJobsScriptRoot { get; set; }
 
         public int FunctionRunnerHttpPort { get; set; } = 8080;
 
         public int ShutdownTimeoutInSeconds { get; set; } = 20;
 
-        public bool PrintConfigJson { get; set; } = false;
-
         public int HeartbeatLogIntervalInSeconds { get; set; } = 60;
+
+        public bool PrintConfigJson { get; set; } = true;
 
         [JsonPropertyName("CONFIG_FILE")]
         public string? ConfigFile { get; set; }
@@ -25,6 +27,7 @@ namespace FunctionRunner
     {
         public Keyvault[]? Keyvaults { get; set; }
         public CopyFile[]? CopyFiles { get; set; }
+        public Executable[]? Executables { get; set; }
     }
 
     class Keyvault
@@ -44,5 +47,11 @@ namespace FunctionRunner
     {
         public required string From { get; set; }
         public required string To { get; set; }
+    }
+
+    class Executable
+    {
+        public required string Exec { get; set; }
+        public string Args { get; set; } = string.Empty;
     }
 }

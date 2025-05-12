@@ -1,12 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    
+	<ImplicitUsings>enable</ImplicitUsings>
+	  
+
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.16.4" />
-    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.4.0" />
+	  <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.4.0" />
+
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
@@ -16,8 +21,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
-    <None Update="settings*.json">
+
+	<None Update="settings*.json">
 	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	</None>
+	  
   </ItemGroup>
 </Project>

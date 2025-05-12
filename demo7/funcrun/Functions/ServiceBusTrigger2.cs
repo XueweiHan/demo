@@ -6,9 +6,9 @@ namespace Functions
     class ServiceBusTrigger2
     {
         [FunctionName("ServiceBusTrigger2")]
-        public void Run([ServiceBusTrigger("queue2", Connection = "ServiceBusConnection2")] string myQueueItem, ILogger log)
+        public void Run([ServiceBusTrigger("queue2", Connection = "ServiceBusConnection2")] string myQueueItem)
         {
-            log.LogInformation($"C# ServiceBus queue trigger [queue2]: {myQueueItem}");
+            //log.LogInformation($"C# ServiceBus queue trigger [queue2]: {myQueueItem}");
         }
     }
 }
