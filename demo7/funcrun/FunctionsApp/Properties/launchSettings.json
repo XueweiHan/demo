@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "FunctionApp": {
+    "FunctionsApp": {
       "commandName": "Project",
-      "commandLineArgs": "--port 7229",
+      "commandLineArgs": "--port 7058",
       "launchBrowser": false,
       "environmentVariables": {
         "--AzureWebJobsStorage": "UseDevelopmentStorage=true",

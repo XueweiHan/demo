@@ -1,7 +1,7 @@
 ﻿using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace FunctionApp
+namespace FunctionsApp
 {
     static class FunctionRunnerBuilderExtensions
     {

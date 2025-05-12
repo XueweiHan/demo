@@ -4,9 +4,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-[assembly: FunctionsStartup(typeof(FunctionApp.Startup))]
+[assembly: FunctionsStartup(typeof(FunctionsApp.Startup))]
 
-namespace FunctionApp
+namespace FunctionsApp
 {
     class Startup : FunctionsStartup
     {
@@ -27,7 +27,7 @@ namespace FunctionApp
             builder.Services.AddLogging(loggingBuilder =>
             {
                 loggingBuilder.SetMinimumLevel(LogLevel.Information);
-                loggingBuilder.AddFilter("FunctionApp", LogLevel.Debug);
+                loggingBuilder.AddFilter("FunctionsApp", LogLevel.Debug);
                 loggingBuilder.AddSimpleConsole(options =>
                 {
                     options.IncludeScopes = false;
