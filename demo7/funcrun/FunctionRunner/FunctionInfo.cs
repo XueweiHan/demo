@@ -32,8 +32,6 @@ namespace FunctionRunner
 
         public async Task<bool> InvokeAsync(object?[] parameters)
         {
-            var t = typeof(Task);
-
             bool success = false;
 
             var name = $"{ConsoleColor.Cyan}{Name}{ConsoleColor.Default}";
