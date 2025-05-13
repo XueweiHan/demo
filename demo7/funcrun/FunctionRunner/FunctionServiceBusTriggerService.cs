@@ -1,5 +1,6 @@
 ﻿using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
@@ -7,20 +8,22 @@ namespace FunctionRunner
     class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger logger)
         : FunctionBaseService(funcInfo, logger)
     {
-        readonly string _fullyQualifiedNamespace = funcInfo.FullyQualifiedNamespace();
+        string? _fullyQualifiedNamespace => _funcInfo.InstanceProvider.GetService<IConfiguration>()
+                                            .GetValue<string>($"{_binding.Connection}:fullyQualifiedNamespace");
+
 
         public override void PrintFunctionInfo(bool u)
         {
-            base.PrintFunctionInfo(u);
+            base.PrintFunctionInfo();
             Console.WriteLine($"  Connection: {_fullyQualifiedNamespace}");
             Console.WriteLine($"  Queue:      {_binding.QueueName}");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if (_funcInfo.IsDisabled())
+            await base.ExecuteAsync(stoppingToken);
+            if (_isDisabled)
             {
-                PrintStatus(FunctionAction.Disabled);
                 return;
             }
 

@@ -34,6 +34,8 @@ namespace FunctionRunner
 
                 webJobsBuilderContext.Configuration = functionRunnerBuilder.ConfigurationBuilder.Build();
 
+                services.AddSingleton<IConfiguration>(webJobsBuilderContext.Configuration);
+
                 startup.Configure(functionRunnerBuilder);
             }
 
@@ -56,9 +58,9 @@ namespace FunctionRunner
             _serviceProvider = services.BuildServiceProvider();
         }
 
-        public ILoggerFactory GetLoggerFactory()
+        public T GetService<T>()
         {
-            return _serviceProvider.GetService<ILoggerFactory>()!;
+            return _serviceProvider.GetService<T>()!;
         }
 
         public object Create(Type type)

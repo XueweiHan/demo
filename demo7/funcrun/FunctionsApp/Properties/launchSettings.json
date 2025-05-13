@@ -10,6 +10,7 @@
         "--FUNCTIONS_WORKER_RUNTIME": "dotnet",
 
         "--Name": "DEV-TEST",
+        "Function1_CronSchedule": "*/5 * * * * *",
         "MyServiceBusConnection__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net"
       }
     }

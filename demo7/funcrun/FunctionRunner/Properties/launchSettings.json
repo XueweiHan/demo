@@ -10,10 +10,8 @@
 
         "MyServiceBusConnection__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
 
-
-        "ServiceBusConnection1__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
-        "ServiceBusConnection2__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
-        "AzureWebJobs.TimerTrigger2.Disabled": "true"
+        "Function1_CronSchedule": "*/5 * * * * *",
+        "AzureWebJobs.Function1_timer.Disabled": "true"
       }
     }
   }

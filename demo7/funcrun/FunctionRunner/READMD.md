@@ -13,3 +13,6 @@ docker build --build-arg dotnet_image_tag=$ver -t $acr/function-runner:$ver .
 az acr login -n $acr
 docker push $acr/function-runner:$ver
 ```
+
+//<PublishSingleFile>true</PublishSingleFile>
+//<SelfContained>true</SelfContained>

@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using Microsoft.Extensions.Logging;
+using System.Reflection;
 
 namespace FunctionRunner
 {
@@ -18,18 +19,21 @@ namespace FunctionRunner
         public required FunctionBinding[] Bindings { get; set; }
     }
 
-    class FunctionInfo(FunctionDefinition function, dynamic instance, MethodInfo method, ParameterInfo[] parameters, string name, TimeSpan timeout)
+    class FunctionInfo(FunctionDefinition function, FunctionInstanceProvider instanceProvider, Type type, MethodInfo method, ParameterInfo[] parameters, string name, TimeSpan timeout)
     {
-        public FunctionDefinition Function { get; set; } = function;
-        public ParameterInfo[] Parameters { get; set; } = parameters;
-        public string Name { get; set; } = name;
+        public FunctionDefinition Function { get; } = function;
+        public ParameterInfo[] Parameters { get; } = parameters;
+        public string Name { get; } = name;
+        public FunctionInstanceProvider InstanceProvider { get; } = instanceProvider;
 
-        readonly dynamic _instance = instance;
+        readonly Type _type = type;
         readonly MethodInfo _method = method;
         readonly TimeSpan _timeout = timeout;
 
         public async Task<bool> InvokeAsync(object?[] parameters)
         {
+            var t = typeof(Task);
+
             bool success = false;
 
             var name = $"{ConsoleColor.Cyan}{Name}{ConsoleColor.Default}";
@@ -85,7 +89,9 @@ namespace FunctionRunner
 
         async Task InvokeAsyncCore(object?[] parameters)
         {
-            dynamic? result = _method.Invoke(_instance, parameters);
+            var instance = this.InstanceProvider.Create(_type);
+
+            dynamic? result = _method.Invoke(instance, parameters);
 
             if (result is Task task)
             {
@@ -93,7 +99,7 @@ namespace FunctionRunner
             }
         }
 
-        public static (List<FunctionInfo>, List<FunctionInstanceProvider>) Load(string root)
+        public static List<FunctionInfo> Load(string root)
         {
             root = Path.GetFullPath(root);
             Directory.SetCurrentDirectory(root);
@@ -122,18 +128,17 @@ namespace FunctionRunner
                     pathToInstanceProvider[dllPath] = instanceProvider;
                 }
 
-                var instance = instanceProvider.Create(targetType);
-
                 funcInfos.Add(new FunctionInfo(
                     function: function,
-                    instance: instance,
+                    instanceProvider: instanceProvider,
+                    type: targetType,
                     method: method,
                     parameters: method.GetParameters().ToArray()!,
                     name: Path.GetFileName(Path.GetDirectoryName(file))!,
                     timeout: GetFunctionTimeout(method)));
             }
 
-            return (funcInfos, pathToInstanceProvider.Values.ToList());
+            return funcInfos;
         }
 
         static TimeSpan GetFunctionTimeout(MethodInfo method)

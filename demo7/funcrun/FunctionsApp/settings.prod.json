@@ -1,3 +1,6 @@
 {
-  "Name": "PROD"
+  "Name": "PROD",
+  "Queue": {
+    "Name": "queue1"
+  }
 }

@@ -1,4 +1,7 @@
 {
   "Name": "PPE",
-  "Count": 100
+  "Count": 100,
+  "Timer": {
+    "Schedule": "*/10 * * * * *"
+  }
 }

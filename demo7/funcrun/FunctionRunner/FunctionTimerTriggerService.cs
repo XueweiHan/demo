@@ -3,8 +3,7 @@ using NCrontab;
 
 namespace FunctionRunner
 {
-    class FunctionTimerTriggerService(FunctionInfo funcInfo, ILogger logger)
-        : FunctionBaseService(funcInfo, logger)
+    class FunctionTimerTriggerService(FunctionInfo funcInfo, ILogger logger) : FunctionBaseService(funcInfo, logger)
     {
         public override void PrintFunctionInfo(bool u)
         {
@@ -14,9 +13,9 @@ namespace FunctionRunner
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if (_funcInfo.IsDisabled())
+            await base.ExecuteAsync(stoppingToken);
+            if (_isDisabled)
             {
-                PrintStatus(FunctionAction.Disabled);
                 return;
             }
 

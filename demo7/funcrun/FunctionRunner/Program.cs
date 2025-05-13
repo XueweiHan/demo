@@ -3,9 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-//<PublishSingleFile>true</PublishSingleFile>
-//<SelfContained>true</SelfContained>
-
 namespace FunctionRunner
 {
     class Program
@@ -29,8 +26,8 @@ namespace FunctionRunner
 
                     if (!appSettings.DisableFunctionRunner && !string.IsNullOrEmpty(appSettings.AzureWebJobsScriptRoot))
                     {
-                        var (functionInfos, instanceProviders) = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
-                        loggerFactory = instanceProviders.Select(ip => ip.GetLoggerFactory()).FirstOrDefault(lf => lf != null);
+                        var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
+                        loggerFactory = functionInfos.Select(info => info.InstanceProvider.GetService<ILoggerFactory>()).FirstOrDefault(lf => lf != null);
 
                         foreach (var funcInfo in functionInfos)
                         {
@@ -57,7 +54,6 @@ namespace FunctionRunner
                         loggingBuilder.ClearProviders();
                         loggingBuilder.AddProvider(new LoggerFactoryAdapter(loggerFactory));
                     }
-
                 })
                 .ConfigureHostOptions(options =>
                 {
