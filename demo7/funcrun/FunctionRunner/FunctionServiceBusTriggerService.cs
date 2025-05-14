@@ -1,6 +1,7 @@
 ﻿using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
@@ -8,9 +9,9 @@ namespace FunctionRunner
     class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger logger)
         : FunctionBaseService(funcInfo, logger)
     {
-        string? _fullyQualifiedNamespace => _funcInfo.InstanceProvider.GetService<IConfiguration>()
-                                            .GetValue<string>($"{_binding.Connection}:fullyQualifiedNamespace");
-
+        string? _fullyQualifiedNamespace => _funcInfo.Builder.Provider
+                                                .GetRequiredService<IConfiguration>()
+                                                .GetValue<string>($"{_binding.Connection}:fullyQualifiedNamespace");
 
         public override void PrintFunctionInfo(bool u)
         {

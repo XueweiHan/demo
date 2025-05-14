@@ -8,13 +8,18 @@ using System.Reflection;
 
 namespace FunctionRunner
 {
-    class FunctionInstanceProvider : IDisposable
+    class FunctionServiceBuilder
     {
-        ServiceProvider _serviceProvider;
+        public IServiceCollection Services { get; private set; }
 
-        public FunctionInstanceProvider(Assembly assembly, string root)
+        IServiceProvider? _serviceProvider;
+
+        public IServiceProvider Provider => _serviceProvider ??= Services.BuildServiceProvider();
+
+        public FunctionServiceBuilder(Assembly assembly, string root)
         {
-            var services = new ServiceCollection();
+            Services = new ServiceCollection();
+            IConfiguration? configuration = null;
 
             var startupAttr = assembly.GetCustomAttributes().FirstOrDefault(a => a.GetType().Name == "FunctionsStartupAttribute");
             if (startupAttr != null)
@@ -28,20 +33,21 @@ namespace FunctionRunner
                     ApplicationRootPath = root,
                 };
                 var functionRunnerBuilder = new FunctionRunnerBuilder(
-                    services, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));
+                    Services, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));
 
                 startup.ConfigureAppConfiguration((IFunctionsConfigurationBuilder)functionRunnerBuilder);
 
-                webJobsBuilderContext.Configuration = functionRunnerBuilder.ConfigurationBuilder.Build();
-
-                services.AddSingleton<IConfiguration>(webJobsBuilderContext.Configuration);
+                configuration = functionRunnerBuilder.ConfigurationBuilder.Build();
+                webJobsBuilderContext.Configuration = configuration;
 
                 startup.Configure(functionRunnerBuilder);
             }
 
-            if (!services.Any(s => s.ServiceType == typeof(ILoggerFactory)))
+            Services.AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build());
+
+            if (!Services.Any(s => s.ServiceType == typeof(ILoggerFactory)))
             {
-                services.AddLogging(loggingBuilder =>
+                Services.AddLogging(loggingBuilder =>
                 {
                     loggingBuilder.ClearProviders();
                     loggingBuilder.SetMinimumLevel(LogLevel.Information);
@@ -54,27 +60,6 @@ namespace FunctionRunner
                     });
                 });
             }
-
-            _serviceProvider = services.BuildServiceProvider();
-        }
-
-        public T GetService<T>()
-        {
-            return _serviceProvider.GetService<T>()!;
-        }
-
-        public object Create(Type type)
-        {
-            var ctor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First()!;
-            var parameters = ctor.GetParameters()
-                .Select(p => _serviceProvider.GetService(p.ParameterType) ?? throw new InvalidOperationException($"Unable to resolve {p.ParameterType}"))
-                .ToArray();
-            return ctor.Invoke(parameters)!;
-        }
-
-        public void Dispose()
-        {
-            _serviceProvider?.Dispose();
         }
     }
 

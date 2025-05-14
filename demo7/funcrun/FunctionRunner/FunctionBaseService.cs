@@ -12,8 +12,9 @@ namespace FunctionRunner
         protected readonly ILogger? _logger = logger;
         protected readonly FunctionBinding _binding = funcInfo.Function.Bindings[0];
 
-        protected bool _isDisabled => _funcInfo.InstanceProvider.GetService<IConfiguration>()?
-                                .GetValue<bool>($"AzureWebJobs.{_funcInfo.Name}.Disabled") ?? false;
+        protected bool _isDisabled => _funcInfo.Builder.Provider
+                                        .GetRequiredService<IConfiguration>()
+                                        .GetValue<bool>($"AzureWebJobs.{_funcInfo.Name}.Disabled");
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -74,8 +75,9 @@ namespace FunctionRunner
             if (expression != null)
             {
                 expression = _expressionPattern.Replace(expression,
-                    match => _funcInfo.InstanceProvider.GetService<IConfiguration>()?
-                                .GetValue<string>(match.Groups[1].Value) ?? match.Value);
+                    match => _funcInfo.Builder.Provider
+                                .GetRequiredService<IConfiguration>()
+                                .GetValue<string>(match.Groups[1].Value, match.Value));
             }
 
             return expression;

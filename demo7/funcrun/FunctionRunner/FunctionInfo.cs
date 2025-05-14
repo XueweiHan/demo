@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
 namespace FunctionRunner
@@ -19,12 +19,12 @@ namespace FunctionRunner
         public required FunctionBinding[] Bindings { get; set; }
     }
 
-    class FunctionInfo(FunctionDefinition function, FunctionInstanceProvider instanceProvider, Type type, MethodInfo method, ParameterInfo[] parameters, string name, TimeSpan timeout)
+    class FunctionInfo(FunctionDefinition function, FunctionServiceBuilder builder, Type type, MethodInfo method, ParameterInfo[] parameters, string name, TimeSpan timeout)
     {
         public FunctionDefinition Function { get; } = function;
         public ParameterInfo[] Parameters { get; } = parameters;
         public string Name { get; } = name;
-        public FunctionInstanceProvider InstanceProvider { get; } = instanceProvider;
+        public FunctionServiceBuilder Builder { get; } = builder;
 
         readonly Type _type = type;
         readonly MethodInfo _method = method;
@@ -88,7 +88,7 @@ namespace FunctionRunner
 
         async Task InvokeAsyncCore(object?[] parameters)
         {
-            var instance = this.InstanceProvider.Create(_type);
+            var instance = Builder.Provider.GetService(_type);
 
             dynamic? result = _method.Invoke(instance, parameters);
 
@@ -104,7 +104,7 @@ namespace FunctionRunner
             Directory.SetCurrentDirectory(root);
             var funcInfos = new List<FunctionInfo>();
 
-            var pathToInstanceProvider = new Dictionary<string, FunctionInstanceProvider>();
+            var pathToBuilderDictionary = new Dictionary<string, FunctionServiceBuilder>();
 
             var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
             foreach (var file in functionJsonFiles)
@@ -113,7 +113,10 @@ namespace FunctionRunner
                 var function = JsonHelper.Deserialize<FunctionDefinition>(functionJson);
                 if (function == null) { continue; }
 
-                var dllPath = Path.GetFullPath(Path.Combine(root, Path.GetFileName(function.ScriptFile)));
+                var functionRoot = Path.GetFullPath(Path.GetDirectoryName(Path.GetDirectoryName(file)!)!);
+                function.ScriptFile = Path.GetRelativePath(root, Path.Combine(functionRoot, Path.GetFileName(function.ScriptFile)));
+
+                var dllPath = function.ScriptFile;
                 var typeName = Path.GetFileNameWithoutExtension(function.EntryPoint);
                 var methodName = Path.GetExtension(function.EntryPoint).TrimStart('.');
 
@@ -121,15 +124,17 @@ namespace FunctionRunner
                 var targetType = assembly.GetType(typeName)!;
                 var method = targetType.GetMethod(methodName)!;
 
-                if (!pathToInstanceProvider.TryGetValue(dllPath, out var instanceProvider))
+                if (!pathToBuilderDictionary.TryGetValue(dllPath, out var builder))
                 {
-                    instanceProvider = new FunctionInstanceProvider(assembly, root);
-                    pathToInstanceProvider[dllPath] = instanceProvider;
+                    builder = new FunctionServiceBuilder(assembly, functionRoot);
+                    pathToBuilderDictionary[dllPath] = builder;
                 }
+
+                builder.Services.AddTransient(targetType);
 
                 funcInfos.Add(new FunctionInfo(
                     function: function,
-                    instanceProvider: instanceProvider,
+                    builder: builder,
                     type: targetType,
                     method: method,
                     parameters: method.GetParameters().ToArray()!,
