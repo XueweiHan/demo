@@ -16,8 +16,8 @@ namespace FunctionRunner
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var name = $"{ConsoleColor.Yellow}HTTPService{ConsoleColor.Default}";
-            Console.WriteLine($"[{name} is listening on http://localhost:{_port}/ at {DateTime.UtcNow:u}]");
+            var name = $"{ConsoleColor.Cyan}HTTPService{ConsoleColor.Default}";
+            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is listening on http://localhost:{_port}/");
             _httpListener.Prefixes.Add($"http://localhost:{_port}/");
 
             try
@@ -33,11 +33,11 @@ namespace FunctionRunner
             catch (HttpListenerException) when (stoppingToken.IsCancellationRequested) { }
             catch (Exception ex)
             {
-                Console.WriteLine($"[{name} encountered an error: {ex}]");
+                Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} encountered an error: {ex}");
             }
             finally
             {
-                Console.WriteLine($"[{name} is stopped at {DateTime.UtcNow:u}]");
+                Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is stopped");
             }
         }
 

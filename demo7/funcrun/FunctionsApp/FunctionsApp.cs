@@ -25,7 +25,8 @@ namespace FunctionsApp
         public override void Configure(IFunctionsHostBuilder builder)
         {
             builder.Services.AddOptions<Settings>()
-                .Configure<IConfiguration>((settings, configuration) => {
+                .Configure<IConfiguration>((settings, configuration) =>
+                {
                     builder.GetContext().Configuration.Bind(settings);
                 });
 
@@ -49,7 +50,7 @@ namespace FunctionsApp
                 {
                     options.IncludeScopes = false;
                     options.UseUtcTimestamp = true;
-                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff]";
+                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
                     options.SingleLine = true;
                 });
             });
@@ -102,7 +103,7 @@ namespace FunctionsApp
         }
 
         [FunctionName("Function1_timer")]
-        public void Run([TimerTrigger("%Function1_CronSchedule%")] TimerInfo myTimer, ILogger log)
+        public void Run([TimerTrigger("%Function1_CronSchedule%", RunOnStartup = true)] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"================= Logger From function parameter");
             _logger.LogInformation($"================= Logger From class ID {_hello.SayHello(_settings.Name)}");
@@ -125,9 +126,9 @@ namespace FunctionsApp
         [Timeout("00:00:01")]
         public async Task Run([TimerTrigger("%Timer:Schedule%")] TimerInfo myTimer, CancellationToken cancel)
         {
-            _logger.LogInformation($"{typeof(Function2).Name}: Start at {DateTime.Now:u}");
+            _logger.LogInformation($"{typeof(Function2).Name} Start --------------");
             await Task.Delay(TimeSpan.FromSeconds(2), cancel);
-            _logger.LogInformation($"{typeof(Function2).Name}: End at {DateTime.Now:u}");
+            _logger.LogInformation($"{typeof(Function2).Name} End --------------");
         }
     }
 

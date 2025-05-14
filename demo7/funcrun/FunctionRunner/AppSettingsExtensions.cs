@@ -61,13 +61,13 @@ namespace FunctionRunner
             if (!string.IsNullOrEmpty(secret.EnvVar))
             {
                 Environment.SetEnvironmentVariable(secret.EnvVar, resp.Value.Value);
-                Console.WriteLine($"[Set secret {secret.Name} to environment variable {secret.EnvVar}]");
+                Console.WriteLine($"{ConsoleStyle.TimeStamp}Set secret {ConsoleColor.Cyan}{secret.Name}{ConsoleColor.Default} to environment variable {ConsoleColor.Cyan}{secret.EnvVar}{ConsoleColor.Default}");
             }
 
             if (!string.IsNullOrEmpty(secret.FilePath))
             {
                 await File.WriteAllTextAsync(secret.FilePath, resp.Value.Value);
-                Console.WriteLine($"[Write secret {secret.Name} to file {secret.FilePath}]");
+                Console.WriteLine($"{ConsoleStyle.TimeStamp}Write secret {ConsoleColor.Cyan}{secret.Name}{ConsoleColor.Default} to file {ConsoleColor.Cyan}{secret.FilePath}{ConsoleColor.Default}");
             }
         }
 
@@ -76,7 +76,7 @@ namespace FunctionRunner
             foreach (var cp in copyFiles ?? [])
             {
                 File.Copy(cp.From, cp.To, overwrite: true);
-                Console.WriteLine($"[Copy file from {cp.From} to {cp.To}]");
+                Console.WriteLine($"{ConsoleStyle.TimeStamp}Copy file from {ConsoleColor.Cyan}{cp.From}{ConsoleColor.Default} to {ConsoleColor.Cyan}{cp.To}{ConsoleColor.Default}");
             }
         }
     }

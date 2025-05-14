@@ -17,11 +17,6 @@ namespace FunctionRunner
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if (_isDisabled)
-            {
-                PrintStatus(FunctionAction.Disabled);
-            }
-
             return Task.CompletedTask;
         }
 
@@ -57,21 +52,19 @@ namespace FunctionRunner
         {
             Start,
             Stop,
-            Disabled
         }
 
         static readonly Dictionary<FunctionAction, string> messages = new()
         {
-            [FunctionAction.Start] = " is starting",
-            [FunctionAction.Stop] = " is stopped",
-            [FunctionAction.Disabled] = " is disabled",
+            [FunctionAction.Start] = "is starting",
+            [FunctionAction.Stop] = "is stopped",
         };
 
         protected void PrintStatus(FunctionAction action)
         {
             var message = messages.TryGetValue(action, out var result) ? result : string.Empty;
 
-            Console.WriteLine($"[{ConsoleColor.Yellow}{_funcInfo.Name}{ConsoleColor.Default}{message} at {DateTime.UtcNow:u}]");
+            Console.WriteLine($"{ConsoleStyle.TimeStamp}{ConsoleColor.Cyan}{_funcInfo.Name}{ConsoleColor.Default} {message}");
         }
 
         static readonly Regex _expressionPattern = new("%([^%]+)%");

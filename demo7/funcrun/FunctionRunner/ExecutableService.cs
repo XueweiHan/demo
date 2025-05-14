@@ -19,8 +19,8 @@ namespace FunctionRunner
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var name = $"{ConsoleColor.Yellow}ExecutableService{ConsoleColor.Default} ({_fileName})";
-            Console.WriteLine($"[{name} is starting at {DateTime.UtcNow:u}]");
+            var name = $"{ConsoleColor.Cyan}ExecutableService{ConsoleColor.Default} ({_fileName})";
+            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is starting");
             try
             {
                 _process = new Process
@@ -63,18 +63,23 @@ namespace FunctionRunner
                         if (!_process.HasExited)
                         {
                             _process.Kill(entireProcessTree: true);
-                            Console.WriteLine($"[{_fileName} is killed at {DateTime.UtcNow:u}]");
+                            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is killed");
                         }
                     }
                     catch
                     {
-                        Console.WriteLine($"[{_fileName} killing failed at {DateTime.UtcNow:u}]");
+                        Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} killing failed");
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                var exception = $"{ex}".Replace(Environment.NewLine, "\t");
+                Console.Error.WriteLine($"{ConsoleStyle.TimeStamp}{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} {exception}");
+            }
             finally
             {
-                Console.WriteLine($"[{name} is stopped at {DateTime.UtcNow:u}]");
+                Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is stopped");
             }
         }
     }

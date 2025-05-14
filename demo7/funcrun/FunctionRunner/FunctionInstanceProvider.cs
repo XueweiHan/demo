@@ -49,7 +49,7 @@ namespace FunctionRunner
                     {
                         options.IncludeScopes = false;
                         options.UseUtcTimestamp = true;
-                        options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff]";
+                        options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
                         options.SingleLine = true;
                     });
                 });
@@ -78,7 +78,8 @@ namespace FunctionRunner
         }
     }
 
-    class FunctionRunnerBuilder(IServiceCollection services, IConfigurationBuilder configurationBuilder, FunctionsHostBuilderContext context) : IFunctionsHostBuilder, IFunctionsConfigurationBuilder, IOptions<FunctionsHostBuilderContext>
+    class FunctionRunnerBuilder(IServiceCollection services, IConfigurationBuilder configurationBuilder, FunctionsHostBuilderContext context)
+        : IFunctionsHostBuilder, IFunctionsConfigurationBuilder, IOptions<FunctionsHostBuilderContext>
     {
         public IServiceCollection Services { get; } = services;
         public IConfigurationBuilder ConfigurationBuilder { get; } = configurationBuilder;

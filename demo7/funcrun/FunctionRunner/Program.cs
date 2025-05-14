@@ -63,7 +63,7 @@ namespace FunctionRunner
 
             await host.RunAsync();
 
-            Console.WriteLine("Exit.");
+            Console.WriteLine($"{ConsoleStyle.TimeStamp}Exit");
         }
 
         static readonly Dictionary<string, Func<FunctionInfo, ILogger, FunctionBaseService>> serviceMap = new()

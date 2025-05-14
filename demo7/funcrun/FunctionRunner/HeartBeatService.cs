@@ -8,20 +8,20 @@ namespace FunctionRunner
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var name = $"{ConsoleColor.Yellow}HeartBeatService{ConsoleColor.Default}";
-            Console.WriteLine($"[{name} is starting at {DateTime.UtcNow:u}]");
+            var name = $"{ConsoleColor.Cyan}HeartBeatService{ConsoleColor.Default}";
+            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is starting");
 
             try
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    Console.WriteLine($"{DateTime.UtcNow:u} pod heartbeat {Environment.MachineName}");
+                    Console.WriteLine($"{ConsoleStyle.TimeStamp}pod heartbeat from {Environment.MachineName}");
                     await Task.Delay(_heartbeatLogInterval, stoppingToken);
                 }
             }
             finally
             {
-                Console.WriteLine($"[{name} is stopped at {DateTime.UtcNow:u}]");
+                Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is stopped");
             }
         }
     }

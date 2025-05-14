@@ -6,6 +6,7 @@
         public static string Black = "\x1B[30m";
         public static string Blue = "\x1B[1m\x1B[34m";
         public static string Cyan = "\x1B[1m\x1B[36m";
+        public static string Gray = "\x1B[1m\x1B[30m";
         public static string Green = "\x1B[1m\x1B[32m";
         public static string Red = "\x1B[31m";
         public static string White = "\x1B[1m\x1B[37m";
@@ -19,5 +20,10 @@
         public static string Red = "\x1B[41m";
 
         public static string Default = "\x1B[49m";
+    }
+
+    static class ConsoleStyle
+    {
+        public static string TimeStamp => $"{ConsoleColor.Gray}[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}]{ConsoleColor.Default} ";
     }
 }

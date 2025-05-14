@@ -36,7 +36,7 @@ namespace FunctionRunner
 
             var name = $"{ConsoleColor.Cyan}{Name}{ConsoleColor.Default}";
 
-            Console.WriteLine($"[{name} is triggered at {DateTime.UtcNow:u}]");
+            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is triggered");
 
             try
             {
@@ -58,11 +58,11 @@ namespace FunctionRunner
                     }
                     catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
                     {
-                        Console.WriteLine($"[{name} {ConsoleBackgroundColor.Red}timed out{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}]");
+                        Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} {ConsoleBackgroundColor.Red}timed out{ConsoleBackgroundColor.Default}");
                     }
                     catch (OperationCanceledException)
                     {
-                        Console.WriteLine($"[{name} is cancelled at {DateTime.UtcNow:u}]");
+                        Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is cancelled");
                     }
                     finally
                     {
@@ -79,7 +79,8 @@ namespace FunctionRunner
             catch (OutOfMemoryException) { throw; }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} at {DateTime.UtcNow:u}] {ex.GetType()} : {ex.StackTrace}");
+                var exception = $"{ex}".Replace(Environment.NewLine, "\t");
+                Console.Error.WriteLine($"{ConsoleStyle.TimeStamp}{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} {exception}");
             }
 
             return success;
