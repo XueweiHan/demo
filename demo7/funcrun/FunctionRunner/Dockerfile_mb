@@ -1,6 +1,6 @@
-# skopeo copy oci-archive:messagebroker_1.0.03056.1174.tar docker-daemon:messagebroker:latest
+# skopeo copy oci-archive:messagebroker_1.0.03057.1185.tar docker-daemon:messagebroker:latest
 
-# docker build -t ptmsdev/mb:latest -f Dockerfile-mb .
+# docker build -t ptmsdev/mb:latest -f Dockerfile_mb .
 
 # docker push ptmsdev/mb:latest
 
@@ -28,10 +28,10 @@ RUN dotnet publish *.csproj -c $configuration -o /publish -r linux-musl-x64
 
 FROM mcr.microsoft.com/dotnet/runtime:${dotnet_version}-alpine
 
-#https://github.com/dotnet/dotnet-docker/blob/main/samples/enable-globalization.md
+# icu package install: https://github.com/dotnet/dotnet-docker/blob/main/samples/enable-globalization.md
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
-    FunctionRunnerHttpPort=100 \
+    FunctionRunnerHttpPort=0 \
     \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
     LC_ALL=en_US.UTF-8 \
@@ -47,7 +47,7 @@ CMD [ "/app/FunctionRunner" ]
 ######################################################################################################
 
 
-# COPY --from=original /home/site/wwwroot /home/site/wwwroot
+COPY --from=original /home/site/wwwroot /home/site/wwwroot
 
 WORKDIR /home/site/wwwroot
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \

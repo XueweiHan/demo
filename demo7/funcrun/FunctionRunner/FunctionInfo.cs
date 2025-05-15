@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using Microsoft.Extensions.Logging;
+using System.Reflection;
 
 namespace FunctionRunner
 {
@@ -97,7 +98,7 @@ namespace FunctionRunner
             }
         }
 
-        public static List<FunctionInfo> Load(string root)
+        public static List<FunctionInfo> Load(string root, Action<ILoggingBuilder> loggingBuilder)
         {
             root = Path.GetFullPath(root);
             Directory.SetCurrentDirectory(root);
@@ -125,7 +126,7 @@ namespace FunctionRunner
                     function: function,
                     type: targetType,
                     method: method,
-                    serviceProvider: assembly.ServiceProviderBuild(functionRoot, targetType),
+                    serviceProvider: assembly.ServiceProviderBuild(functionRoot, targetType, loggingBuilder),
                     name: Path.GetFileName(Path.GetDirectoryName(file))!));
             }
 

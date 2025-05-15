@@ -10,7 +10,7 @@ namespace FunctionRunner
 {
     static class FunctionServiceProviderBuilderExtensions
     {
-        public static IServiceProvider ServiceProviderBuild(this Assembly assembly, string root, Type type)
+        public static IServiceProvider ServiceProviderBuild(this Assembly assembly, string root, Type type, Action<ILoggingBuilder> loggingBuilder)
         {
             var services = new ServiceCollection();
             IConfiguration? configuration = null;
@@ -37,27 +37,11 @@ namespace FunctionRunner
                 startup.Configure(functionRunnerBuilder);
             }
 
-            services.AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build());
-
-            if (!services.Any(s => s.ServiceType == typeof(ILoggerFactory)))
-            {
-                services.AddLogging(loggingBuilder =>
-                {
-                    loggingBuilder.ClearProviders();
-                    loggingBuilder.SetMinimumLevel(LogLevel.Information);
-                    loggingBuilder.AddSimpleConsole(options =>
-                    {
-                        options.IncludeScopes = false;
-                        options.UseUtcTimestamp = true;
-                        options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
-                        options.SingleLine = true;
-                    });
-                });
-            }
-
-            services.AddTransient(type);
-
-            return services.BuildServiceProvider();
+            return services
+                .AddTransient(type)
+                .AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build())
+                .AddLogging(loggingBuilder)
+                .BuildServiceProvider();
         }
     }
 

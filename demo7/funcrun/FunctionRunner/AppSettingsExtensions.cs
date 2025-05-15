@@ -13,7 +13,7 @@ namespace FunctionRunner
 
             if (appSettings.PrintConfigJson)
             {
-                JsonHelper.PrintJson(appSettings);
+                Console.WriteLine(JsonHelper.GetJson(appSettings));
             }
 
             if (!string.IsNullOrWhiteSpace(appSettings.ConfigFile))
@@ -22,7 +22,7 @@ namespace FunctionRunner
                 var config = JsonHelper.Deserialize<Config>(json);
                 if (appSettings.PrintConfigJson)
                 {
-                    JsonHelper.PrintJson(config);
+                    Console.WriteLine(JsonHelper.GetJson(config));
                 }
 
                 await ExecuteConfigAsync(config!);

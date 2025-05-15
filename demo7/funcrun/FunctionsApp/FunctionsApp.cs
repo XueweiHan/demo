@@ -13,13 +13,18 @@ namespace FunctionsApp
     {
         public override void ConfigureAppConfiguration(IFunctionsConfigurationBuilder builder)
         {
+            //using var loggerFactory = LoggerFactory.Create(builder => { });
+            //var logger = loggerFactory.CreateLogger(nameof(Startup));
+            //var env = Environment.GetEnvironmentVariable("environment");
+            //logger.LogInformation("++++++++++++++++++++++++++++++++++ Building configuration, env={environment}", env);
+
             builder.ConfigurationBuilder
                 .SetBasePath(builder.GetContext().ApplicationRootPath)
                 .AddJsonFile("settings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile("settings.prod.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables();
 
-            base.ConfigureAppConfiguration(builder);
+            //base.ConfigureAppConfiguration(builder);
         }
 
         public override void Configure(IFunctionsHostBuilder builder)
@@ -46,13 +51,6 @@ namespace FunctionsApp
             {
                 loggingBuilder.SetMinimumLevel(LogLevel.Information);
                 loggingBuilder.AddFilter("FunctionsApp", LogLevel.Debug);
-                loggingBuilder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = false;
-                    options.UseUtcTimestamp = true;
-                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
-                    options.SingleLine = true;
-                });
             });
         }
     }
@@ -105,6 +103,7 @@ namespace FunctionsApp
         [FunctionName("Function1_timer")]
         public void Run([TimerTrigger("%Function1_CronSchedule%", RunOnStartup = true)] TimerInfo myTimer, ILogger log)
         {
+            _logger.LogWarning($"{typeof(Function1)}");
             log.LogInformation($"================= Logger From function parameter");
             _logger.LogInformation($"================= Logger From class ID {_hello.SayHello(_settings.Name)}");
 
@@ -126,6 +125,7 @@ namespace FunctionsApp
         [Timeout("00:00:01")]
         public async Task Run([TimerTrigger("%Timer:Schedule%")] TimerInfo myTimer, CancellationToken cancel)
         {
+            _logger.LogWarning($"{typeof(Function2)}");
             _logger.LogInformation($"{typeof(Function2).Name} Start --------------");
             await Task.Delay(TimeSpan.FromSeconds(2), cancel);
             _logger.LogInformation($"{typeof(Function2).Name} End --------------");
@@ -137,6 +137,7 @@ namespace FunctionsApp
         [FunctionName("Function3_sb_queue")]
         public Task Run([ServiceBusTrigger("%Queue:Name%", Connection = "MyServiceBusConnection")] string myQueueItem, ILogger log, CancellationToken cancell)
         {
+            log.LogWarning($"{typeof(Function3)}");
             log.LogInformation($"C# ServiceBus queue trigger function processed message: {myQueueItem}");
             return Task.CompletedTask;
         }

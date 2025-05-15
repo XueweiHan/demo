@@ -26,13 +26,13 @@ namespace FunctionRunner
             return Deserialize<T>(Environment.GetEnvironmentVariable(envName));
         }
 
-        public static void PrintJson<T>(T obj)
+        public static string GetJson<T>(T obj)
         {
-            Console.WriteLine(JsonSerializer.Serialize(obj, new JsonSerializerOptions
+            return JsonSerializer.Serialize(obj, new JsonSerializerOptions
             {
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            }));
+            });
         }
     }
 }

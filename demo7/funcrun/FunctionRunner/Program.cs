@@ -10,7 +10,18 @@ namespace FunctionRunner
         static async Task Main(string[] args)
         {
             var appSettings = new AppSettings();
-            ILoggerFactory? loggerFactory = null;
+
+            void loggingBuilder(ILoggingBuilder loggingBuilder)
+            {
+                loggingBuilder.SetMinimumLevel(LogLevel.Information);
+                loggingBuilder.AddSimpleConsole(options =>
+                {
+                    options.IncludeScopes = false;
+                    options.UseUtcTimestamp = true;
+                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
+                    options.SingleLine = true;
+                });
+            }
 
             using var host = Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration(config =>
@@ -18,6 +29,7 @@ namespace FunctionRunner
                     config.AddJsonFile("appSettings.json", optional: true);
                     config.AddEnvironmentVariables();
                 })
+                .ConfigureLogging(loggingBuilder)
                 .ConfigureServices((ctx, services) =>
                 {
                     ctx.Configuration.Bind(appSettings);
@@ -26,9 +38,7 @@ namespace FunctionRunner
 
                     if (!appSettings.DisableFunctionRunner && !string.IsNullOrEmpty(appSettings.AzureWebJobsScriptRoot))
                     {
-                        var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
-
-                        loggerFactory = functionInfos.Select(info => info.ServiceProvider.GetService<ILoggerFactory>()).FirstOrDefault(lf => lf != null);
+                        var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot, loggingBuilder);
 
                         foreach (var funcInfo in functionInfos)
                         {
@@ -47,14 +57,6 @@ namespace FunctionRunner
                     }
 
                     AddExecutableServices(services, appSettings.ConfigJson?.Executables);
-                })
-                .ConfigureLogging(loggingBuilder =>
-                {
-                    if (loggerFactory != null)
-                    {
-                        loggingBuilder.ClearProviders();
-                        loggingBuilder.AddProvider(new LoggerFactoryAdapter(loggerFactory));
-                    }
                 })
                 .ConfigureHostOptions(options =>
                 {
