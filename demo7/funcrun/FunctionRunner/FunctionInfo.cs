@@ -104,8 +104,6 @@ namespace FunctionRunner
             Directory.SetCurrentDirectory(root);
             var funcInfos = new List<FunctionInfo>();
 
-            var pathToBuilderDictionary = new Dictionary<string, FunctionServiceBuilder>();
-
             var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
             foreach (var file in functionJsonFiles)
             {
@@ -124,11 +122,7 @@ namespace FunctionRunner
                 var targetType = assembly.GetType(typeName)!;
                 var method = targetType.GetMethod(methodName)!;
 
-                if (!pathToBuilderDictionary.TryGetValue(dllPath, out var builder))
-                {
-                    builder = new FunctionServiceBuilder(assembly, functionRoot);
-                    pathToBuilderDictionary[dllPath] = builder;
-                }
+                var builder = new FunctionServiceBuilder(assembly, functionRoot);
 
                 builder.Services.AddTransient(targetType);
 
