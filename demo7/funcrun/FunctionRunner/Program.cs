@@ -28,7 +28,7 @@ namespace FunctionRunner
                     {
                         var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
 
-                        loggerFactory = functionInfos.Select(info => info.Builder.Provider.GetService<ILoggerFactory>()).FirstOrDefault(lf => lf != null);
+                        loggerFactory = functionInfos.Select(info => info.ServiceProvider.GetService<ILoggerFactory>()).FirstOrDefault(lf => lf != null);
 
                         foreach (var funcInfo in functionInfos)
                         {

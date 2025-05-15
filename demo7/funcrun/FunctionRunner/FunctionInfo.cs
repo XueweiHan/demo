@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace FunctionRunner
 {
@@ -19,16 +18,16 @@ namespace FunctionRunner
         public required FunctionBinding[] Bindings { get; set; }
     }
 
-    class FunctionInfo(FunctionDefinition function, FunctionServiceBuilder builder, Type type, MethodInfo method, ParameterInfo[] parameters, string name, TimeSpan timeout)
+    class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IServiceProvider serviceProvider, string name)
     {
         public FunctionDefinition Function { get; } = function;
-        public ParameterInfo[] Parameters { get; } = parameters;
+        public ParameterInfo[] Parameters { get; } = method.GetParameters();
         public string Name { get; } = name;
-        public FunctionServiceBuilder Builder { get; } = builder;
+        public IServiceProvider ServiceProvider { get; } = serviceProvider;
 
         readonly Type _type = type;
         readonly MethodInfo _method = method;
-        readonly TimeSpan _timeout = timeout;
+        readonly TimeSpan _timeout = GetFunctionTimeout(method);
 
         public async Task<bool> InvokeAsync(object?[] parameters)
         {
@@ -88,7 +87,7 @@ namespace FunctionRunner
 
         async Task InvokeAsyncCore(object?[] parameters)
         {
-            var instance = Builder.Provider.GetService(_type);
+            var instance = ServiceProvider.GetService(_type);
 
             dynamic? result = _method.Invoke(instance, parameters);
 
@@ -122,18 +121,12 @@ namespace FunctionRunner
                 var targetType = assembly.GetType(typeName)!;
                 var method = targetType.GetMethod(methodName)!;
 
-                var builder = new FunctionServiceBuilder(assembly, functionRoot);
-
-                builder.Services.AddTransient(targetType);
-
                 funcInfos.Add(new FunctionInfo(
                     function: function,
-                    builder: builder,
                     type: targetType,
                     method: method,
-                    parameters: method.GetParameters().ToArray()!,
-                    name: Path.GetFileName(Path.GetDirectoryName(file))!,
-                    timeout: GetFunctionTimeout(method)));
+                    serviceProvider: assembly.ServiceProviderBuild(functionRoot, targetType),
+                    name: Path.GetFileName(Path.GetDirectoryName(file))!));
             }
 
             return funcInfos;

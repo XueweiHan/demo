@@ -8,17 +8,11 @@ using System.Reflection;
 
 namespace FunctionRunner
 {
-    class FunctionServiceBuilder
+    static class FunctionServiceProviderBuilderExtensions
     {
-        public IServiceCollection Services { get; private set; }
-
-        IServiceProvider? _serviceProvider;
-
-        public IServiceProvider Provider => _serviceProvider ??= Services.BuildServiceProvider();
-
-        public FunctionServiceBuilder(Assembly assembly, string root)
+        public static IServiceProvider ServiceProviderBuild(this Assembly assembly, string root, Type type)
         {
-            Services = new ServiceCollection();
+            var services = new ServiceCollection();
             IConfiguration? configuration = null;
 
             var startupAttr = assembly.GetCustomAttributes().FirstOrDefault(a => a.GetType().Name == "FunctionsStartupAttribute");
@@ -33,7 +27,7 @@ namespace FunctionRunner
                     ApplicationRootPath = root,
                 };
                 var functionRunnerBuilder = new FunctionRunnerBuilder(
-                    Services, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));
+                    services, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));
 
                 startup.ConfigureAppConfiguration((IFunctionsConfigurationBuilder)functionRunnerBuilder);
 
@@ -43,11 +37,11 @@ namespace FunctionRunner
                 startup.Configure(functionRunnerBuilder);
             }
 
-            Services.AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build());
+            services.AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build());
 
-            if (!Services.Any(s => s.ServiceType == typeof(ILoggerFactory)))
+            if (!services.Any(s => s.ServiceType == typeof(ILoggerFactory)))
             {
-                Services.AddLogging(loggingBuilder =>
+                services.AddLogging(loggingBuilder =>
                 {
                     loggingBuilder.ClearProviders();
                     loggingBuilder.SetMinimumLevel(LogLevel.Information);
@@ -60,6 +54,10 @@ namespace FunctionRunner
                     });
                 });
             }
+
+            services.AddTransient(type);
+
+            return services.BuildServiceProvider();
         }
     }
 

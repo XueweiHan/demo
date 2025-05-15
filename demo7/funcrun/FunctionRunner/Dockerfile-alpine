@@ -9,23 +9,26 @@ ARG configuration=Release
 WORKDIR /src
 COPY . .
 
+RUN dotnet add package Microsoft.Data.SqlClient --version 6.0.2
+
 RUN dotnet publish *.csproj -c $configuration -o /publish -r linux-musl-x64
 
 
 
 FROM mcr.microsoft.com/dotnet/runtime:${dotnet_version}-alpine
 
-#https://github.com/dotnet/dotnet-docker/blob/main/samples/enable-globalization.md
+# icu package install: https://github.com/dotnet/dotnet-docker/blob/main/samples/enable-globalization.md
 
 ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
+    FunctionRunnerHttpPort=0 \
     \
-    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false 
-    # LC_ALL=en_US.UTF-8 \
-    # LANG=en_US.UTF-8
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8
 
-# RUN apk add --no-cache \
-#     icu-data-full \
-#     icu-libs
+RUN apk add --no-cache \
+    icu-data-full \
+    icu-libs
 
 COPY --from=build /publish /app
 

@@ -9,7 +9,7 @@ namespace FunctionRunner
     class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger logger)
         : FunctionBaseService(funcInfo, logger)
     {
-        string? _fullyQualifiedNamespace => _funcInfo.Builder.Provider
+        string? _fullyQualifiedNamespace => _funcInfo.ServiceProvider
                                                 .GetRequiredService<IConfiguration>()
                                                 .GetValue<string>($"{_binding.Connection}:fullyQualifiedNamespace");
 

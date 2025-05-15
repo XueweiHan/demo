@@ -12,7 +12,7 @@ namespace FunctionRunner
         protected readonly ILogger? _logger = logger;
         protected readonly FunctionBinding _binding = funcInfo.Function.Bindings[0];
 
-        protected bool _isDisabled => _funcInfo.Builder.Provider
+        protected bool _isDisabled => _funcInfo.ServiceProvider
                                         .GetRequiredService<IConfiguration>()
                                         .GetValue<bool>($"AzureWebJobs.{_funcInfo.Name}.Disabled");
 
@@ -75,7 +75,7 @@ namespace FunctionRunner
             if (expression != null)
             {
                 expression = _expressionPattern.Replace(expression,
-                    match => _funcInfo.Builder.Provider
+                    match => _funcInfo.ServiceProvider
                                 .GetRequiredService<IConfiguration>()
                                 .GetValue<string>(match.Groups[1].Value, match.Value));
             }
