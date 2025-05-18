@@ -3,6 +3,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using System.Reflection;
 
@@ -10,7 +11,7 @@ namespace FunctionRunner
 {
     static class FunctionServiceProviderBuilderExtensions
     {
-        public static IServiceProvider ServiceProviderBuild(this Assembly assembly, string root, Type type, Action<ILoggingBuilder> loggingBuilder)
+        public static IServiceProvider ServiceProviderBuild(this Assembly assembly, string root, Type type)
         {
             var services = new ServiceCollection();
             IConfiguration? configuration = null;
@@ -23,7 +24,6 @@ namespace FunctionRunner
 
                 var webJobsBuilderContext = new WebJobsBuilderContext()
                 {
-                    EnvironmentName = "Development",
                     ApplicationRootPath = root,
                 };
                 var functionRunnerBuilder = new FunctionRunnerBuilder(
@@ -40,8 +40,23 @@ namespace FunctionRunner
             return services
                 .AddTransient(type)
                 .AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build())
-                .AddLogging(loggingBuilder)
+                .AddLogging(loggingBuilder => loggingBuilder.Build(services))
                 .BuildServiceProvider();
+        }
+
+        public static void Build(this ILoggingBuilder loggingBuilder, IServiceCollection services)
+        {
+            var customizedConsoleFormatter = services.Any(sp => sp.ServiceType == typeof(ConsoleFormatter));
+            if (!customizedConsoleFormatter)
+            {
+                loggingBuilder.AddSimpleConsole(options =>
+                {
+                    options.IncludeScopes = false;
+                    options.UseUtcTimestamp = true;
+                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
+                    options.SingleLine = true;
+                });
+            }
         }
     }
 

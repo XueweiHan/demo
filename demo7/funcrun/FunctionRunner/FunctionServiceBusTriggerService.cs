@@ -6,8 +6,8 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner
 {
-    class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILogger logger)
-        : FunctionBaseService(funcInfo, logger)
+    class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
+        : FunctionBaseService(funcInfo, loggerFactory)
     {
         string? _fullyQualifiedNamespace => _funcInfo.ServiceProvider
                                                 .GetRequiredService<IConfiguration>()
@@ -16,8 +16,8 @@ namespace FunctionRunner
         public override void PrintFunctionInfo(bool u)
         {
             base.PrintFunctionInfo();
-            Console.WriteLine($"  Connection: {_fullyQualifiedNamespace}");
-            Console.WriteLine($"  Queue:      {_binding.QueueName}");
+            _elogger.LogInformation($"  Connection: {_fullyQualifiedNamespace}");
+            _elogger.LogInformation($"  Queue:      {_binding.QueueName}");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -68,7 +68,7 @@ namespace FunctionRunner
 
             var parameters = PrepareParameters(body, args.CancellationToken);
 
-            var success = await _funcInfo.InvokeAsync(parameters);
+            var success = await _funcInfo.InvokeAsync(parameters, _loggerFactory);
 
             if (success)
             {
@@ -83,7 +83,7 @@ namespace FunctionRunner
 
         Task ErrorHandlerAsync(ProcessErrorEventArgs args)
         {
-            Console.WriteLine(args.Exception.ToString());
+            _logger.LogError(args.Exception.ToString());
             return Task.CompletedTask;
         }
     }

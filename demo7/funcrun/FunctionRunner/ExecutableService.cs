@@ -4,12 +4,14 @@ using System.Diagnostics;
 
 namespace FunctionRunner
 {
-    internal class ExecutableService(string fileName, string arguments, ILogger<ExecutableService> logger) : BackgroundService
+    internal class ExecutableService(string fileName, string arguments, ILoggerFactory loggerFactory) : BackgroundService
     {
-        private readonly string _fileName = fileName;
-        private readonly string _arguments = arguments;
-        private readonly ILogger<ExecutableService> _logger = logger;
-        private Process? _process;
+        readonly string _fileName = fileName;
+        readonly string _arguments = arguments;
+        readonly ILoggerFactory _loggerFactory = loggerFactory;
+        readonly ILogger _logger = loggerFactory.CreateLogger("T.Cyan0");
+        readonly ILogger _elogger = loggerFactory.CreateLogger("T");
+        Process? _process;
 
         public override void Dispose()
         {
@@ -19,8 +21,9 @@ namespace FunctionRunner
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var name = $"{ConsoleColor.Cyan}ExecutableService{ConsoleColor.Default} ({_fileName})";
-            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is starting");
+            var name = $"ExecutableService ({_fileName})";
+            _logger.LogInformation($"{name} is starting");
+
             try
             {
                 _process = new Process
@@ -39,13 +42,13 @@ namespace FunctionRunner
 
                 var tcs = new TaskCompletionSource();
 
-                _process.OutputDataReceived += (s, e) => Console.WriteLine(e.Data);
+                _process.OutputDataReceived += (s, e) => _elogger.LogInformation(e.Data);
 
-                _process.ErrorDataReceived += (s, e) => Console.Error.WriteLine(e.Data);
+                _process.ErrorDataReceived += (s, e) => _elogger.LogError(e.Data);
 
                 _process.Exited += (s, e) =>
                 {
-                    Console.WriteLine($"{_fileName} exited with code {_process.ExitCode}");
+                    _logger.LogError($"{name} exited with code {_process.ExitCode}");
                     tcs.TrySetResult();
                 };
 
@@ -63,23 +66,24 @@ namespace FunctionRunner
                         if (!_process.HasExited)
                         {
                             _process.Kill(entireProcessTree: true);
-                            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is killed");
+                            _logger.LogWarning($"{name} is killed");
                         }
                     }
                     catch
                     {
-                        Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} killing failed");
+                        _logger.LogError($"{name} is failed");
                     }
                 }
             }
             catch (Exception ex)
             {
                 var exception = $"{ex}".Replace(Environment.NewLine, "\t");
-                Console.Error.WriteLine($"{ConsoleStyle.TimeStamp}{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} {exception}");
+
+                _loggerFactory.CreateLogger("T.Cyan0.Red4").LogError($"{name} encountered an exception {exception}");
             }
             finally
             {
-                Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is stopped");
+                _logger.LogInformation($"{name} is stopped");
             }
         }
     }

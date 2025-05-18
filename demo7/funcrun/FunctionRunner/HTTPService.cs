@@ -1,12 +1,15 @@
 ﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.Net;
+using System.Text;
 
 namespace FunctionRunner
 {
-    class HTTPService(AppSettings appSettings) : BackgroundService
+    class HTTPService(AppSettings appSettings, ILoggerFactory loggerFactory) : BackgroundService
     {
         readonly HttpListener _httpListener = new();
         readonly int _port = appSettings.FunctionRunnerHttpPort;
+        readonly ILogger _logger = loggerFactory.CreateLogger("T.Cyan0");
 
         public override void Dispose()
         {
@@ -16,8 +19,9 @@ namespace FunctionRunner
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var name = $"{ConsoleColor.Cyan}HTTPService{ConsoleColor.Default}";
-            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is listening on http://localhost:{_port}/");
+            var name = $"HTTPService";
+            _logger.LogInformation($"{name} is listening on port {_port}");
+
             _httpListener.Prefixes.Add($"http://localhost:{_port}/");
 
             try
@@ -33,11 +37,11 @@ namespace FunctionRunner
             catch (HttpListenerException) when (stoppingToken.IsCancellationRequested) { }
             catch (Exception ex)
             {
-                Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} encountered an error: {ex}");
+                _logger.LogError($"{name} encountered an error: {ex}");
             }
             finally
             {
-                Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is stopped");
+                _logger.LogInformation($"{name} is stopped");
             }
         }
 
@@ -46,12 +50,12 @@ namespace FunctionRunner
             try
             {
                 var request = context.Request;
-                var response = context.Response;
+                using var response = context.Response;
 
                 Console.WriteLine($"Received {request.HttpMethod} request for {request.Url}");
 
-                var responseString = "Hello from HTTPService!";
-                var buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                var responseString = $"Hello from HTTPService!";
+                var buffer = Encoding.UTF8.GetBytes(responseString);
 
                 response.ContentLength64 = buffer.Length;
                 await response.OutputStream.WriteAsync(buffer, 0, buffer.Length, stoppingToken);
@@ -59,7 +63,7 @@ namespace FunctionRunner
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error handling request: {ex.Message}");
+                _logger.LogError($"Error handling request: {ex}");
             }
         }
 

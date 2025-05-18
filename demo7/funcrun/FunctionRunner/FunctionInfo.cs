@@ -30,13 +30,11 @@ namespace FunctionRunner
         readonly MethodInfo _method = method;
         readonly TimeSpan _timeout = GetFunctionTimeout(method);
 
-        public async Task<bool> InvokeAsync(object?[] parameters)
+        public async Task<bool> InvokeAsync(object?[] parameters, ILoggerFactory loggerFactory)
         {
             bool success = false;
 
-            var name = $"{ConsoleColor.Cyan}{Name}{ConsoleColor.Default}";
-
-            Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is triggered");
+            loggerFactory.CreateLogger("T.Cyan0").LogInformation($"{Name} is triggered");
 
             try
             {
@@ -58,11 +56,11 @@ namespace FunctionRunner
                     }
                     catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
                     {
-                        Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} {ConsoleBackgroundColor.Red}timed out{ConsoleBackgroundColor.Default}");
+                        loggerFactory.CreateLogger("T.Cyan0.Red1.Red2").LogWarning($"{Name} timed out");
                     }
                     catch (OperationCanceledException)
                     {
-                        Console.WriteLine($"{ConsoleStyle.TimeStamp}{name} is cancelled");
+                        loggerFactory.CreateLogger("T.Cyan0").LogWarning($"{Name} is cancelled");
                     }
                     finally
                     {
@@ -80,7 +78,7 @@ namespace FunctionRunner
             catch (Exception ex)
             {
                 var exception = $"{ex}".Replace(Environment.NewLine, "\t");
-                Console.Error.WriteLine($"{ConsoleStyle.TimeStamp}{name} encountered an {ConsoleBackgroundColor.Red}exception{ConsoleBackgroundColor.Default} {exception}");
+                loggerFactory.CreateLogger("T.Cyan0.Red3").LogInformation($"{Name} encountered an exception {exception}");
             }
 
             return success;
@@ -98,7 +96,7 @@ namespace FunctionRunner
             }
         }
 
-        public static List<FunctionInfo> Load(string root, Action<ILoggingBuilder> loggingBuilder)
+        public static List<FunctionInfo> Load(string root)
         {
             root = Path.GetFullPath(root);
             Directory.SetCurrentDirectory(root);
@@ -126,7 +124,7 @@ namespace FunctionRunner
                     function: function,
                     type: targetType,
                     method: method,
-                    serviceProvider: assembly.ServiceProviderBuild(functionRoot, targetType, loggingBuilder),
+                    serviceProvider: assembly.ServiceProviderBuild(functionRoot, targetType),
                     name: Path.GetFileName(Path.GetDirectoryName(file))!));
             }
 

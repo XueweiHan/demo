@@ -51,6 +51,7 @@ namespace FunctionsApp
             {
                 loggingBuilder.SetMinimumLevel(LogLevel.Information);
                 loggingBuilder.AddFilter("FunctionsApp", LogLevel.Debug);
+                //loggingBuilder.AddConsole();
             });
         }
     }

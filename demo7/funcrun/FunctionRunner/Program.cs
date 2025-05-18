@@ -10,18 +10,7 @@ namespace FunctionRunner
         static async Task Main(string[] args)
         {
             var appSettings = new AppSettings();
-
-            void loggingBuilder(ILoggingBuilder loggingBuilder)
-            {
-                loggingBuilder.SetMinimumLevel(LogLevel.Information);
-                loggingBuilder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = false;
-                    options.UseUtcTimestamp = true;
-                    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss.fff] ";
-                    options.SingleLine = true;
-                });
-            }
+            var loggerFactory = LoggerFactory.Create(AnsiConsoleFormatter.LoggingBuilder);
 
             using var host = Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration(config =>
@@ -29,20 +18,23 @@ namespace FunctionRunner
                     config.AddJsonFile("appSettings.json", optional: true);
                     config.AddEnvironmentVariables();
                 })
-                .ConfigureLogging(loggingBuilder)
+                .ConfigureLogging(AnsiConsoleFormatter.LoggingBuilder)
                 .ConfigureServices((ctx, services) =>
                 {
                     ctx.Configuration.Bind(appSettings);
+                    ctx.Configuration.GetSection("CONFIG_JSON").Bind(appSettings.ConfigJson);
+                    ctx.Configuration.GetSection("CONFIG_FILE").Bind(appSettings.ConfigFile);
                     services.AddSingleton(appSettings);
-                    appSettings.ExecuteAsync(ctx.Configuration).Wait();
+
+                    appSettings.ExecuteAsync(loggerFactory).Wait();
 
                     if (!appSettings.DisableFunctionRunner && !string.IsNullOrEmpty(appSettings.AzureWebJobsScriptRoot))
                     {
-                        var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot, loggingBuilder);
+                        var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
 
                         foreach (var funcInfo in functionInfos)
                         {
-                            AddFunctionServices(services, funcInfo);
+                            AddFunctionServices(services, funcInfo, loggerFactory);
                         }
                     }
 
@@ -66,31 +58,30 @@ namespace FunctionRunner
 
             await host.RunAsync();
 
-            Console.WriteLine($"{ConsoleStyle.TimeStamp}Exit");
+            loggerFactory.CreateLogger("T").LogInformation("Exit");
         }
 
-        static readonly Dictionary<string, Func<FunctionInfo, ILogger, FunctionBaseService>> serviceMap = new()
+        static readonly Dictionary<string, Func<FunctionInfo, ILoggerFactory, FunctionBaseService>> serviceMap = new()
         {
-            ["serviceBusTrigger"] = (funcInfo, logger) => new FunctionServiceBusTriggerService(funcInfo, logger),
-            ["timerTrigger"] = (funcInfo, logger) => new FunctionTimerTriggerService(funcInfo, logger)
+            ["serviceBusTrigger"] = (funcInfo, loggerFactory) => new FunctionServiceBusTriggerService(funcInfo, loggerFactory),
+            ["timerTrigger"] = (funcInfo, loggerFactory) => new FunctionTimerTriggerService(funcInfo, loggerFactory)
         };
 
-        static void AddFunctionServices(IServiceCollection services, FunctionInfo funcInfo)
+        static void AddFunctionServices(IServiceCollection services, FunctionInfo funcInfo, ILoggerFactory loggerFactory)
         {
             var type = funcInfo.Function.Bindings[0].Type;
             if (serviceMap.TryGetValue(type, out var serviceFactory))
             {
                 services.AddSingleton<IHostedService>(sp =>
                 {
-                    var service = serviceFactory(funcInfo, sp.GetRequiredService<ILoggerFactory>().CreateLogger(funcInfo.Function.EntryPoint));
-                    //var service = serviceFactory(funcInfo, sp.GetRequiredService<ILogger<FunctionBaseService>>());
+                    var service = serviceFactory(funcInfo, sp.GetRequiredService<ILoggerFactory>());
                     service.PrintFunctionInfo();
                     return service;
                 });
             }
             else
             {
-                new FunctionBaseService(funcInfo, null).PrintFunctionInfo(true);
+                new FunctionBaseService(funcInfo, loggerFactory).PrintFunctionInfo(true);
             }
         }
 
@@ -98,8 +89,8 @@ namespace FunctionRunner
         {
             foreach (var executable in executables ?? [])
             {
-                services.AddSingleton<IHostedService>(sp => new ExecutableService(executable.Exec, executable.Args,
-                    sp.GetRequiredService<ILogger<ExecutableService>>()));
+                services.AddSingleton<IHostedService>(sp =>
+                    new ExecutableService(executable.Exec, executable.Args, sp.GetRequiredService<ILoggerFactory>()));
             }
         }
     }

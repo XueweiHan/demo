@@ -3,12 +3,13 @@ using NCrontab;
 
 namespace FunctionRunner
 {
-    class FunctionTimerTriggerService(FunctionInfo funcInfo, ILogger logger) : FunctionBaseService(funcInfo, logger)
+    class FunctionTimerTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
+        : FunctionBaseService(funcInfo, loggerFactory)
     {
         public override void PrintFunctionInfo(bool u)
         {
             base.PrintFunctionInfo();
-            Console.WriteLine($"  Schedule:   {_binding.Schedule}");
+            _elogger.LogInformation($"  Schedule:   {_binding.Schedule}");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -27,7 +28,7 @@ namespace FunctionRunner
 
                 if (_binding.RunOnStartup)
                 {
-                    await _funcInfo.InvokeAsync(parameters);
+                    await _funcInfo.InvokeAsync(parameters, _loggerFactory);
                 }
 
                 var schedule = CrontabSchedule.Parse(_binding.Schedule, new CrontabSchedule.ParseOptions { IncludingSeconds = true });
@@ -55,7 +56,7 @@ namespace FunctionRunner
                         }
                     }
 
-                    await _funcInfo.InvokeAsync(parameters);
+                    await _funcInfo.InvokeAsync(parameters, _loggerFactory);
 
                     while (schedule.GetNextOccurrence(DateTime.UtcNow) == next)
                     {

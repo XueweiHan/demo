@@ -17,10 +17,10 @@ namespace FunctionRunner
         public bool PrintConfigJson { get; set; } = true;
 
         [JsonPropertyName("CONFIG_FILE")]
-        public string? ConfigFile { get; set; }
+        public string? ConfigFile { get; set; } = string.Empty;
 
         [JsonPropertyName("CONFIG_JSON")]
-        public Config? ConfigJson { get; set; }
+        public Config? ConfigJson { get; set; } = new Config();
     }
 
     class Config
