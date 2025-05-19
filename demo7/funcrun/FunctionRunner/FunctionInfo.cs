@@ -1,121 +1,159 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Reflection;
 
-namespace FunctionRunner
+namespace FunctionRunner;
+
+class FunctionBinding
 {
-    class FunctionBinding
+    public required string Type { get; set; }
+    public string? Connection { get; set; }
+    public string? QueueName { get; set; }
+    public string? Schedule { get; set; }
+    public bool RunOnStartup { get; set; }
+}
+
+class FunctionDefinition
+{
+    public string? Name { get; set; }
+    public required string EntryPoint { get; set; }
+    public required string ScriptFile { get; set; }
+    public required FunctionBinding[] Bindings { get; set; }
+}
+
+class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IServiceProvider serviceProvider, string name)
+{
+    public FunctionDefinition Function { get; } = function;
+    public ParameterInfo[] Parameters { get; } = method.GetParameters();
+    public string Name { get; } = name;
+    public IServiceProvider ServiceProvider { get; } = serviceProvider;
+
+    readonly Type _type = type;
+    readonly MethodInfo _method = method;
+    readonly TimeSpan _timeout = GetFunctionTimeout(method);
+
+    public async Task<bool> InvokeAsync(object?[] parameters, ILoggerFactory loggerFactory)
     {
-        public required string Type { get; set; }
-        public string? Connection { get; set; }
-        public string? QueueName { get; set; }
-        public string? Schedule { get; set; }
-        public bool RunOnStartup { get; set; }
-    }
+        bool success = false;
 
-    class FunctionDefinition
-    {
-        public required string EntryPoint { get; set; }
-        public required string ScriptFile { get; set; }
-        public required FunctionBinding[] Bindings { get; set; }
-    }
+        loggerFactory.CreateLogger("T.Cyan0").LogInformation($"{Name} is triggered");
 
-    class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IServiceProvider serviceProvider, string name)
-    {
-        public FunctionDefinition Function { get; } = function;
-        public ParameterInfo[] Parameters { get; } = method.GetParameters();
-        public string Name { get; } = name;
-        public IServiceProvider ServiceProvider { get; } = serviceProvider;
-
-        readonly Type _type = type;
-        readonly MethodInfo _method = method;
-        readonly TimeSpan _timeout = GetFunctionTimeout(method);
-
-        public async Task<bool> InvokeAsync(object?[] parameters, ILoggerFactory loggerFactory)
+        try
         {
-            bool success = false;
+            int cancelTokenIndex = Array.FindIndex(parameters, p => p is CancellationToken);
 
-            loggerFactory.CreateLogger("T.Cyan0").LogInformation($"{Name} is triggered");
-
-            try
+            if (_timeout != TimeSpan.Zero &&
+                cancelTokenIndex > -1 &&
+                parameters[cancelTokenIndex] is CancellationToken originalToken)
             {
-                int cancelTokenIndex = Array.FindIndex(parameters, p => p is CancellationToken);
+                using var timeoutCts = new CancellationTokenSource(_timeout);
+                using var joinedCts = CancellationTokenSource.CreateLinkedTokenSource(originalToken, timeoutCts.Token);
 
-                if (_timeout != TimeSpan.Zero &&
-                    cancelTokenIndex > -1 &&
-                    parameters[cancelTokenIndex] is CancellationToken originalToken)
-                {
-                    using var timeoutCts = new CancellationTokenSource(_timeout);
-                    using var joinedCts = CancellationTokenSource.CreateLinkedTokenSource(originalToken, timeoutCts.Token);
+                parameters[cancelTokenIndex] = joinedCts.Token;
 
-                    parameters[cancelTokenIndex] = joinedCts.Token;
-
-                    try
-                    {
-                        await InvokeAsyncCore(parameters);
-                        success = true;
-                    }
-                    catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
-                    {
-                        loggerFactory.CreateLogger("T.Cyan0.Red1.Red2").LogWarning($"{Name} timed out");
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        loggerFactory.CreateLogger("T.Cyan0").LogWarning($"{Name} is cancelled");
-                    }
-                    finally
-                    {
-                        parameters[cancelTokenIndex] = originalToken;
-                    }
-                }
-                else
+                try
                 {
                     await InvokeAsyncCore(parameters);
                     success = true;
                 }
+                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                {
+                    loggerFactory.CreateLogger("T.Cyan0.Red1.Red2").LogWarning($"{Name} timed out");
+                }
+                catch (OperationCanceledException)
+                {
+                    loggerFactory.CreateLogger("T.Cyan0").LogWarning($"{Name} is cancelled");
+                }
+                finally
+                {
+                    parameters[cancelTokenIndex] = originalToken;
+                }
             }
-            catch (StackOverflowException) { throw; }
-            catch (OutOfMemoryException) { throw; }
-            catch (Exception ex)
+            else
             {
-                var exception = $"{ex}".Replace(Environment.NewLine, "\t");
-                loggerFactory.CreateLogger("T.Cyan0.Red3").LogInformation($"{Name} encountered an exception {exception}");
-            }
-
-            return success;
-        }
-
-        async Task InvokeAsyncCore(object?[] parameters)
-        {
-            var instance = ServiceProvider.GetService(_type);
-
-            dynamic? result = _method.Invoke(instance, parameters);
-
-            if (result is Task task)
-            {
-                await task;
+                await InvokeAsyncCore(parameters);
+                success = true;
             }
         }
-
-        public static List<FunctionInfo> Load(string root)
+        catch (StackOverflowException) { throw; }
+        catch (OutOfMemoryException) { throw; }
+        catch (Exception ex)
         {
-            root = Path.GetFullPath(root);
-            Directory.SetCurrentDirectory(root);
-            var funcInfos = new List<FunctionInfo>();
+            loggerFactory.CreateLogger("T.Cyan0.Red3").LogError(ex, $"{Name} encountered an exception");
+        }
 
-            var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
-            foreach (var file in functionJsonFiles)
+        return success;
+    }
+
+    async Task InvokeAsyncCore(object?[] parameters)
+    {
+        var instance = ServiceProvider.GetService(_type);
+
+        dynamic? result = _method.Invoke(instance, parameters);
+
+        if (result is Task task)
+        {
+            await task;
+        }
+    }
+
+    public static List<FunctionInfo> Load(string root)
+    {
+        root = Path.GetFullPath(root);
+        Directory.SetCurrentDirectory(root);
+        var funcInfos = new List<FunctionInfo>();
+
+        LoadInMemoryFunctions(root, funcInfos);
+
+        //LoadIsolatedFunctions(root, funcInfos);
+
+        return funcInfos;
+    }
+
+    private static void LoadInMemoryFunctions(string root, List<FunctionInfo> funcInfos)
+    {
+        var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
+        foreach (var file in functionJsonFiles)
+        {
+            var functionJson = File.ReadAllText(file);
+            var function = JsonHelper.Deserialize<FunctionDefinition>(functionJson);
+            if (function == null) { continue; }
+
+            var functionRoot = Path.GetFullPath(Path.GetDirectoryName(Path.GetDirectoryName(file)!)!);
+            function.ScriptFile = Path.GetRelativePath(root, Path.Combine(functionRoot, Path.GetFileName(function.ScriptFile)));
+
+            var dllPath = function.ScriptFile;
+            var typeName = Path.GetFileNameWithoutExtension(function.EntryPoint);
+            var methodName = Path.GetExtension(function.EntryPoint).TrimStart('.');
+
+            var assembly = Assembly.LoadFrom(dllPath);
+            var targetType = assembly.GetType(typeName)!;
+            var method = targetType.GetMethod(methodName)!;
+
+            funcInfos.Add(new FunctionInfo(
+                function: function,
+                type: targetType,
+                method: method,
+                serviceProvider: assembly.ServiceProviderBuild(functionRoot, targetType),
+                name: Path.GetFileName(Path.GetDirectoryName(file))!));
+        }
+    }
+
+    static void LoadIsolatedFunctions(string root, List<FunctionInfo> funcInfos)
+    {
+        var functionJsonFiles = Directory.GetFiles(root, "functions.metadata", SearchOption.AllDirectories);
+        foreach (var file in functionJsonFiles)
+        {
+            var functionJson = File.ReadAllText(file);
+            var functions = JsonHelper.Deserialize<FunctionDefinition[]>(functionJson);
+            foreach (var function in functions ?? [])
             {
-                var functionJson = File.ReadAllText(file);
-                var function = JsonHelper.Deserialize<FunctionDefinition>(functionJson);
-                if (function == null) { continue; }
-
-                var functionRoot = Path.GetFullPath(Path.GetDirectoryName(Path.GetDirectoryName(file)!)!);
+                var functionRoot = Path.GetFullPath(Path.GetDirectoryName(file)!);
                 function.ScriptFile = Path.GetRelativePath(root, Path.Combine(functionRoot, Path.GetFileName(function.ScriptFile)));
 
                 var dllPath = function.ScriptFile;
                 var typeName = Path.GetFileNameWithoutExtension(function.EntryPoint);
                 var methodName = Path.GetExtension(function.EntryPoint).TrimStart('.');
-
+                
                 var assembly = Assembly.LoadFrom(dllPath);
                 var targetType = assembly.GetType(typeName)!;
                 var method = targetType.GetMethod(methodName)!;
@@ -124,18 +162,16 @@ namespace FunctionRunner
                     function: function,
                     type: targetType,
                     method: method,
-                    serviceProvider: assembly.ServiceProviderBuild(functionRoot, targetType),
-                    name: Path.GetFileName(Path.GetDirectoryName(file))!));
+                    serviceProvider: assembly.ServiceProviderIsolatedBuild(functionRoot, targetType),
+                    name: function.Name!));
             }
-
-            return funcInfos;
         }
+    }
 
-        static TimeSpan GetFunctionTimeout(MethodInfo method)
-        {
-            var timeoutAttribute = method.GetCustomAttributes()
-                .FirstOrDefault(a => a.GetType().FullName == "Microsoft.Azure.WebJobs.TimeoutAttribute");
-            return (TimeSpan)(timeoutAttribute?.GetType().GetProperty("Timeout")?.GetValue(timeoutAttribute) ?? TimeSpan.Zero);
-        }
+    static TimeSpan GetFunctionTimeout(MethodInfo method)
+    {
+        var timeoutAttribute = method.GetCustomAttributes()
+            .FirstOrDefault(a => a.GetType().FullName == "Microsoft.Azure.WebJobs.TimeoutAttribute");
+        return (TimeSpan)(timeoutAttribute?.GetType().GetProperty("Timeout")?.GetValue(timeoutAttribute) ?? TimeSpan.Zero);
     }
 }

@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "FunctionsApp3": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7040",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "MyServiceBusConnection__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net"
+      }
+    }
+  }
+}

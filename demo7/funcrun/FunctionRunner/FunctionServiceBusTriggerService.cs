@@ -4,87 +4,86 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace FunctionRunner
+namespace FunctionRunner;
+
+class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
+    : FunctionBaseService(funcInfo, loggerFactory)
 {
-    class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
-        : FunctionBaseService(funcInfo, loggerFactory)
+    string? _fullyQualifiedNamespace => _funcInfo.ServiceProvider
+                                            .GetRequiredService<IConfiguration>()
+                                            .GetValue<string>($"{_binding.Connection}:fullyQualifiedNamespace");
+
+    public override void PrintFunctionInfo(bool u)
     {
-        string? _fullyQualifiedNamespace => _funcInfo.ServiceProvider
-                                                .GetRequiredService<IConfiguration>()
-                                                .GetValue<string>($"{_binding.Connection}:fullyQualifiedNamespace");
+        base.PrintFunctionInfo();
+        _elogger.LogInformation($"  Connection: {_fullyQualifiedNamespace}");
+        _elogger.LogInformation($"  Queue:      {_binding.QueueName}");
+    }
 
-        public override void PrintFunctionInfo(bool u)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await base.ExecuteAsync(stoppingToken);
+        if (_isDisabled)
         {
-            base.PrintFunctionInfo();
-            _elogger.LogInformation($"  Connection: {_fullyQualifiedNamespace}");
-            _elogger.LogInformation($"  Queue:      {_binding.QueueName}");
+            return;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        PrintStatus(FunctionAction.Start);
+
+        await using var client = new ServiceBusClient(
+            _fullyQualifiedNamespace,
+            new DefaultAzureCredential(),
+            new ServiceBusClientOptions()
+            {
+                TransportType = ServiceBusTransportType.AmqpWebSockets
+            });
+
+        await using var processor = client.CreateProcessor(_binding.QueueName);
+
+        // add handler to process messages
+        processor.ProcessMessageAsync += MessageHandlerAsync;
+
+        // add handler to process any errors
+        processor.ProcessErrorAsync += ErrorHandlerAsync;
+
+        try
         {
-            await base.ExecuteAsync(stoppingToken);
-            if (_isDisabled)
-            {
-                return;
-            }
+            // start processing 
+            await processor.StartProcessingAsync(stoppingToken);
 
-            PrintStatus(FunctionAction.Start);
-
-            await using var client = new ServiceBusClient(
-                _fullyQualifiedNamespace,
-                new DefaultAzureCredential(),
-                new ServiceBusClientOptions()
-                {
-                    TransportType = ServiceBusTransportType.AmqpWebSockets
-                });
-
-            await using var processor = client.CreateProcessor(_binding.QueueName);
-
-            // add handler to process messages
-            processor.ProcessMessageAsync += MessageHandlerAsync;
-
-            // add handler to process any errors
-            processor.ProcessErrorAsync += ErrorHandlerAsync;
-
-            try
-            {
-                // start processing 
-                await processor.StartProcessingAsync(stoppingToken);
-
-                // wait for cancellation
-                await Task.Delay(Timeout.Infinite, stoppingToken);
-            }
-            finally
-            {
-                // stop processing
-                await processor.StopProcessingAsync();
-                PrintStatus(FunctionAction.Stop);
-            }
+            // wait for cancellation
+            await Task.Delay(Timeout.Infinite, stoppingToken);
         }
-
-        async Task MessageHandlerAsync(ProcessMessageEventArgs args)
+        finally
         {
-            var body = args.Message.Body.ToString();
-
-            var parameters = PrepareParameters(body, args.CancellationToken);
-
-            var success = await _funcInfo.InvokeAsync(parameters, _loggerFactory);
-
-            if (success)
-            {
-                // complete the message. message is deleted from the queue. 
-                await args.CompleteMessageAsync(args.Message, args.CancellationToken);
-            }
-            else
-            {
-                await args.AbandonMessageAsync(args.Message, null, args.CancellationToken);
-            }
+            // stop processing
+            await processor.StopProcessingAsync();
+            PrintStatus(FunctionAction.Stop);
         }
+    }
 
-        Task ErrorHandlerAsync(ProcessErrorEventArgs args)
+    async Task MessageHandlerAsync(ProcessMessageEventArgs args)
+    {
+        var body = args.Message.Body.ToString();
+
+        var parameters = PrepareParameters(body, args.CancellationToken);
+
+        var success = await _funcInfo.InvokeAsync(parameters, _loggerFactory);
+
+        if (success)
         {
-            _logger.LogError(args.Exception.ToString());
-            return Task.CompletedTask;
+            // complete the message. message is deleted from the queue. 
+            await args.CompleteMessageAsync(args.Message, args.CancellationToken);
         }
+        else
+        {
+            await args.AbandonMessageAsync(args.Message, null, args.CancellationToken);
+        }
+    }
+
+    Task ErrorHandlerAsync(ProcessErrorEventArgs args)
+    {
+        _logger.LogError(args.Exception.ToString());
+        return Task.CompletedTask;
     }
 }
