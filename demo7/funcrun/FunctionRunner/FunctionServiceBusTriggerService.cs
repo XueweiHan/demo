@@ -1,4 +1,8 @@
-﻿using Azure.Identity;
+﻿// <copyright file="FunctionServiceBusTriggerService.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,24 +10,41 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner;
 
-class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
-    : FunctionBaseService(funcInfo, loggerFactory)
+/// <summary>
+/// Service for running a function triggered by Azure Service Bus messages.
+/// </summary>
+class FunctionServiceBusTriggerService : FunctionBaseService
 {
-    string? _fullyQualifiedNamespace => _funcInfo.ServiceProvider
-                                            .GetRequiredService<IConfiguration>()
-                                            .GetValue<string>($"{_binding.Connection}:fullyQualifiedNamespace");
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FunctionServiceBusTriggerService"/> class.
+    /// </summary>
+    /// <param name="funcInfo">The function information.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    public FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
+        : base(funcInfo, loggerFactory)
+    {
+    }
 
+    /// <summary>
+    /// Gets the fully qualified namespace from configuration.
+    /// </summary>
+    private string? FullyQualifiedNamespace => funcInfo.ServiceProvider
+        .GetRequiredService<IConfiguration>()
+        .GetValue<string>($"{binding.Connection}:fullyQualifiedNamespace");
+
+    /// <inheritdoc/>
     public override void PrintFunctionInfo(bool u)
     {
         base.PrintFunctionInfo();
-        _elogger.LogInformation($"  Connection: {_fullyQualifiedNamespace}");
-        _elogger.LogInformation($"  Queue:      {_binding.QueueName}");
+        elogger.LogInformation($"  Connection: {FullyQualifiedNamespace}");
+        elogger.LogInformation($"  Queue:      {binding.QueueName}");
     }
 
+    /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await base.ExecuteAsync(stoppingToken);
-        if (_isDisabled)
+        if (IsDisabled)
         {
             return;
         }
@@ -31,14 +52,14 @@ class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory log
         PrintStatus(FunctionAction.Start);
 
         await using var client = new ServiceBusClient(
-            _fullyQualifiedNamespace,
+            FullyQualifiedNamespace,
             new DefaultAzureCredential(),
             new ServiceBusClientOptions()
             {
                 TransportType = ServiceBusTransportType.AmqpWebSockets
             });
 
-        await using var processor = client.CreateProcessor(_binding.QueueName);
+        await using var processor = client.CreateProcessor(binding.QueueName);
 
         // add handler to process messages
         processor.ProcessMessageAsync += MessageHandlerAsync;
@@ -62,13 +83,18 @@ class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory log
         }
     }
 
-    async Task MessageHandlerAsync(ProcessMessageEventArgs args)
+    /// <summary>
+    /// Handles incoming Service Bus messages.
+    /// </summary>
+    /// <param name="args">The message event arguments.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    private async Task MessageHandlerAsync(ProcessMessageEventArgs args)
     {
         var body = args.Message.Body.ToString();
 
         var parameters = PrepareParameters(body, args.CancellationToken);
 
-        var success = await _funcInfo.InvokeAsync(parameters, _loggerFactory);
+        var success = await funcInfo.InvokeAsync(parameters, loggerFactory);
 
         if (success)
         {
@@ -81,9 +107,14 @@ class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory log
         }
     }
 
-    Task ErrorHandlerAsync(ProcessErrorEventArgs args)
+    /// <summary>
+    /// Handles errors that occur during message processing.
+    /// </summary>
+    /// <param name="args">The error event arguments.</param>
+    /// <returns>A completed task.</returns>
+    private Task ErrorHandlerAsync(ProcessErrorEventArgs args)
     {
-        _logger.LogError(args.Exception.ToString());
+        logger.LogError(args.Exception.ToString());
         return Task.CompletedTask;
     }
 }

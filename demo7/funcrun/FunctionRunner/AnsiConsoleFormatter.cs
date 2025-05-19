@@ -1,13 +1,21 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Logging.Console;
+﻿// <copyright file="AnsiConsoleFormatter.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Console;
 
 namespace FunctionRunner;
 
+/// <summary>
+/// Provides a custom console formatter for logging with ANSI color support.
+/// </summary>
 class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
 {
+    /// <inheritdoc/>
     public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider? scopeProvider, TextWriter textWriter)
     {
         var logLevel = logEntry.LogLevel;
@@ -15,7 +23,10 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
         var message = logEntry.Formatter.Invoke(logEntry.State, logEntry.Exception);
         var exception = logEntry.Exception == null ? string.Empty : $" {logEntry.Exception}".Replace(Environment.NewLine, "  ");
 
-        if (message == null) return;
+        if (message == null)
+        {
+            return;
+        }
 
         var words = message.Split(' ');
         int wordCount = words.Length;
@@ -59,11 +70,13 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
             }
 
             index = index >= 0 ? index : wordCount + index;
-            if (index < 0 || index >= wordCount) continue;
+            if (index < 0 || index >= wordCount)
+            {
+                continue;
+            }
 
             colorMapping[index] = colorName;
         }
-
 
         if (!colorFormat)
         {
@@ -83,11 +96,14 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
 
             for (int i = 0; i < wordCount; i++)
             {
-                if (i > 0) result.Append(' ');
+                if (i > 0)
+                {
+                    result.Append(' ');
+                }
 
                 if (colorMapping[i] != null)
                 {
-                    var colorName = colorMapping[i]!;
+                    var colorName = colorMapping[i] !;
                     var colorCode = AnsiColors.TryGetValue(colorName, out var code) ? code : string.Empty;
 
                     result.Append(colorCode).Append(words[i]).Append(Reset);
@@ -104,9 +120,14 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
         }
     }
 
+    /// <summary>
+    /// Gets the log level string with ANSI color codes.
+    /// </summary>
+    /// <param name="logLevel">The log level.</param>
+    /// <returns>The formatted log level string.</returns>
     static string GetLogLevelString(LogLevel logLevel)
     {
-        return $"{logLevel switch
+        var color = logLevel switch
         {
             LogLevel.Trace => AnsiColors["Gray"],
             LogLevel.Debug => AnsiColors["Cyan"],
@@ -115,7 +136,9 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
             LogLevel.Error => AnsiColors["Red"],
             LogLevel.Critical => AnsiColors["Magenta"],
             _ => Reset,
-        }}{logLevel switch
+        };
+
+        var level = logLevel switch
         {
             LogLevel.Trace => "trce",
             LogLevel.Debug => "dbug",
@@ -124,9 +147,14 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
             LogLevel.Error => "fail",
             LogLevel.Critical => "crit",
             _ => "none"
-        }}{Reset}";
+        };
+
+        return $"{color}{level}{Reset}";
     }
 
+    /// <summary>
+    /// ANSI color codes mapping.
+    /// </summary>
     static readonly Dictionary<string, string> AnsiColors = new()
     {
         ["Black"] = "\x1B[30m",
@@ -141,10 +169,21 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
 
         ["BkRed"] = "\x1B[41m",
     };
-    static string Reset = "\x1B[0m";
 
-    static string FormatterName = "AnsiConsole";
+    /// <summary>
+    /// ANSI reset code.
+    /// </summary>
+    static readonly string Reset = "\x1B[0m";
 
+    /// <summary>
+    /// Formatter name.
+    /// </summary>
+    static readonly string FormatterName = "AnsiConsole";
+
+    /// <summary>
+    /// Configures the logging builder to use the AnsiConsoleFormatter.
+    /// </summary>
+    /// <param name="loggingBuilder">The logging builder.</param>
     public static void LoggingBuilder(ILoggingBuilder loggingBuilder)
     {
         loggingBuilder

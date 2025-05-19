@@ -1,21 +1,30 @@
-﻿using Microsoft.Extensions.Logging;
+﻿// <copyright file="FunctionTimerTriggerService.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
+using Microsoft.Extensions.Logging;
 using NCrontab;
 
 namespace FunctionRunner;
 
+/// <summary>
+/// Service for running a function on a timer trigger using a cron schedule.
+/// </summary>
 class FunctionTimerTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
     : FunctionBaseService(funcInfo, loggerFactory)
 {
+    /// <inheritdoc/>
     public override void PrintFunctionInfo(bool u)
     {
         base.PrintFunctionInfo();
-        _elogger.LogInformation($"  Schedule:   {_binding.Schedule}");
+        elogger.LogInformation($"  Schedule:   {binding.Schedule}");
     }
 
+    /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await base.ExecuteAsync(stoppingToken);
-        if (_isDisabled)
+        if (IsDisabled)
         {
             return;
         }
@@ -26,12 +35,12 @@ class FunctionTimerTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFa
 
             var parameters = PrepareParameters(stoppingToken);
 
-            if (_binding.RunOnStartup)
+            if (binding.RunOnStartup)
             {
-                await _funcInfo.InvokeAsync(parameters, _loggerFactory);
+                await funcInfo.InvokeAsync(parameters, loggerFactory);
             }
 
-            var schedule = CrontabSchedule.Parse(_binding.Schedule, new CrontabSchedule.ParseOptions { IncludingSeconds = true });
+            var schedule = CrontabSchedule.Parse(binding.Schedule, new CrontabSchedule.ParseOptions { IncludingSeconds = true });
             var nextCheckTimeSpan = TimeSpan.FromDays(1);
 
             for (; ; )
@@ -56,7 +65,7 @@ class FunctionTimerTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFa
                     }
                 }
 
-                await _funcInfo.InvokeAsync(parameters, _loggerFactory);
+                await funcInfo.InvokeAsync(parameters, loggerFactory);
 
                 while (schedule.GetNextOccurrence(DateTime.UtcNow) == next)
                 {

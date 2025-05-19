@@ -5,8 +5,10 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-	<NoWarn>$(NoWarn);NU1604</NoWarn>
+    <NoWarn>$(NoWarn);NU1604;NU1701</NoWarn>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

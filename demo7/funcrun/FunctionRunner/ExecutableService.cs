@@ -1,37 +1,48 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+﻿// <copyright file="ExecutableService.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
 using System.Diagnostics;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner;
 
+/// <summary>
+/// Runs an external executable as a background service.
+/// </summary>
 internal class ExecutableService(string fileName, string arguments, ILoggerFactory loggerFactory) : BackgroundService
 {
-    readonly string _fileName = fileName;
-    readonly string _arguments = arguments;
-    readonly ILoggerFactory _loggerFactory = loggerFactory;
-    readonly ILogger _logger = loggerFactory.CreateLogger("T.Cyan0");
-    readonly ILogger _elogger = loggerFactory.CreateLogger("T");
-    Process? _process;
+    readonly string fileName = fileName;
+    readonly string arguments = arguments;
+    readonly ILoggerFactory loggerFactory = loggerFactory;
+    readonly ILogger logger = loggerFactory.CreateLogger("T.Cyan0");
+    readonly ILogger elogger = loggerFactory.CreateLogger("T");
+    Process? process;
 
+    /// <inheritdoc/>
     public override void Dispose()
     {
-        _process?.Dispose();
+        process?.Dispose();
+        process = null;
+        loggerFactory.Dispose();
         base.Dispose();
     }
 
+    /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var name = $"ExecutableService ({_fileName})";
-        _logger.LogInformation($"{name} is starting");
+        var name = $"ExecutableService ({fileName})";
+        logger.LogInformation($"{name} is starting");
 
         try
         {
-            _process = new Process
+            process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = _fileName,
-                    Arguments = _arguments,
+                    FileName = fileName,
+                    Arguments = arguments,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -42,15 +53,15 @@ internal class ExecutableService(string fileName, string arguments, ILoggerFacto
 
             var tcs = new TaskCompletionSource<int>();
 
-            _process.OutputDataReceived += (s, e) => _elogger.LogInformation(e.Data);
+            process.OutputDataReceived += (s, e) => elogger.LogInformation(e.Data);
 
-            _process.ErrorDataReceived += (s, e) => _elogger.LogError(e.Data);
+            process.ErrorDataReceived += (s, e) => elogger.LogError(e.Data);
 
-            _process.Exited += (s, e) => tcs.TrySetResult(_process.ExitCode);
+            process.Exited += (s, e) => tcs.TrySetResult(process.ExitCode);
 
-            _process.Start();
-            _process.BeginOutputReadLine();
-            _process.BeginErrorReadLine();
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
 
             // Wait for either the process to exit or cancellation
             var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(Timeout.Infinite, stoppingToken));
@@ -59,30 +70,30 @@ internal class ExecutableService(string fileName, string arguments, ILoggerFacto
             {
                 try
                 {
-                    if (!_process.HasExited)
+                    if (!process.HasExited)
                     {
-                        _process.Kill(entireProcessTree: true);
-                        _logger.LogWarning($"{name} is killed");
+                        process.Kill(entireProcessTree: true);
+                        logger.LogWarning($"{name} is killed");
                     }
                 }
                 catch
                 {
-                    _logger.LogError($"{name} is failed");
+                    logger.LogError($"{name} is failed");
                 }
             }
             else
             {
                 var exitCode = await tcs.Task;
-                _logger.LogError($"{name} exited with code {exitCode}");
+                logger.LogError($"{name} exited with code {exitCode}");
             }
         }
         catch (Exception ex)
         {
-            _loggerFactory.CreateLogger("T.Cyan0.Red4").LogError(ex, $"{name} encountered an exception");
+            loggerFactory.CreateLogger("T.Cyan0.Red4").LogError(ex, $"{name} encountered an exception");
         }
         finally
         {
-            _logger.LogInformation($"{name} is stopped");
+            logger.LogInformation($"{name} is stopped");
         }
     }
 }

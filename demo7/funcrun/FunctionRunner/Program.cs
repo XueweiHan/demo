@@ -1,12 +1,26 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿// <copyright file="Program.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+[assembly: System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+
 namespace FunctionRunner;
 
+/// <summary>
+/// The main entry point for the FunctionRunner application.
+/// </summary>
 class Program
 {
+    /// <summary>
+    /// Application entry point.
+    /// </summary>
+    /// <param name="args">Command-line arguments.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     static async Task Main(string[] args)
     {
         var appSettings = new AppSettings();
@@ -48,7 +62,7 @@ class Program
                     services.AddHostedService<HeartBeatService>();
                 }
 
-                AddExecutableServices(services, appSettings.ConfigJson?.Executables);
+                AddExecutableServices(services, appSettings.ConfigJson!.Executables);
             })
             .ConfigureHostOptions(options =>
             {
@@ -67,6 +81,12 @@ class Program
         ["timerTrigger"] = (funcInfo, loggerFactory) => new FunctionTimerTriggerService(funcInfo, loggerFactory)
     };
 
+    /// <summary>
+    /// Adds function services to the service collection.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="funcInfo">The function information.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
     static void AddFunctionServices(IServiceCollection services, FunctionInfo funcInfo, ILoggerFactory loggerFactory)
     {
         var type = funcInfo.Function.Bindings[0].Type;
@@ -85,9 +105,14 @@ class Program
         }
     }
 
-    static void AddExecutableServices(IServiceCollection services, Executable[]? executables)
+    /// <summary>
+    /// Adds executable services to the service collection.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="executables">The array of executables.</param>
+    static void AddExecutableServices(IServiceCollection services, Executable[] executables)
     {
-        foreach (var executable in executables ?? [])
+        foreach (var executable in executables)
         {
             services.AddSingleton<IHostedService>(sp =>
                 new ExecutableService(executable.Exec, executable.Args, sp.GetRequiredService<ILoggerFactory>()));

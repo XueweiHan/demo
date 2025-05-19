@@ -1,4 +1,9 @@
-﻿using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+﻿// <copyright file="FunctionServiceBuilder.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
+using System.Reflection;
+using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,12 +11,21 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
-using System.Reflection;
 
 namespace FunctionRunner;
 
+/// <summary>
+/// Extension methods for building a service provider for Azure Functions.
+/// </summary>
 static class FunctionServiceProviderBuilderExtensions
 {
+    /// <summary>
+    /// Builds a service provider for the specified function type and assembly.
+    /// </summary>
+    /// <param name="assembly">The assembly containing the function.</param>
+    /// <param name="root">The application root path.</param>
+    /// <param name="type">The function type to register.</param>
+    /// <returns>An <see cref="IServiceProvider"/> instance.</returns>
     public static IServiceProvider ServiceProviderBuild(this Assembly assembly, string root, Type type)
     {
         var services = new ServiceCollection();
@@ -78,6 +92,11 @@ static class FunctionServiceProviderBuilderExtensions
         return new ServiceProviderProxy(provider!);
     }
 
+    /// <summary>
+    /// Configures logging for the function app.
+    /// </summary>
+    /// <param name="loggingBuilder">The logging builder.</param>
+    /// <param name="services">The service collection.</param>
     public static void Build(this ILoggingBuilder loggingBuilder, IServiceCollection services)
     {
         var customizedConsoleFormatter = services.Any(sp => sp.ServiceType == typeof(ConsoleFormatter));
@@ -94,14 +113,25 @@ static class FunctionServiceProviderBuilderExtensions
     }
 }
 
+/// <summary>
+/// Builder for function runner services and configuration.
+/// </summary>
 class FunctionRunnerBuilder(IServiceCollection services, IConfigurationBuilder configurationBuilder, FunctionsHostBuilderContext context)
     : IFunctionsHostBuilder, IFunctionsConfigurationBuilder, IOptions<FunctionsHostBuilderContext>
 {
+    /// <inheritdoc/>
     public IServiceCollection Services { get; } = services;
+
+    /// <inheritdoc/>
     public IConfigurationBuilder ConfigurationBuilder { get; } = configurationBuilder;
+
+    /// <inheritdoc/>
     public FunctionsHostBuilderContext Value { get; } = context;
 }
 
+/// <summary>
+/// Host builder context for function runner.
+/// </summary>
 class FunctionRunnerHostBuilderContext(WebJobsBuilderContext webJobsBuilderContext) : FunctionsHostBuilderContext(webJobsBuilderContext)
 {
 }

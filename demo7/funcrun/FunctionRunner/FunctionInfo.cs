@@ -1,36 +1,104 @@
-﻿using Microsoft.Extensions.Logging;
+﻿// <copyright file="FunctionInfo.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner;
 
+/// <summary>
+/// Represents a function binding configuration.
+/// </summary>
 class FunctionBinding
 {
-    public required string Type { get; set; }
+    /// <summary>
+    /// Gets or sets the type of the binding.
+    /// </summary>
+    required public string Type { get; set; }
+
+    /// <summary>
+    /// Gets or sets the connection string.
+    /// </summary>
     public string? Connection { get; set; }
+
+    /// <summary>
+    /// Gets or sets the queue name.
+    /// </summary>
     public string? QueueName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the schedule.
+    /// </summary>
     public string? Schedule { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the function should run on startup.
+    /// </summary>
     public bool RunOnStartup { get; set; }
 }
 
+/// <summary>
+/// Represents a function definition.
+/// </summary>
 class FunctionDefinition
 {
+    /// <summary>
+    /// Gets or sets the function name.
+    /// </summary>
     public string? Name { get; set; }
-    public required string EntryPoint { get; set; }
-    public required string ScriptFile { get; set; }
-    public required FunctionBinding[] Bindings { get; set; }
+
+    /// <summary>
+    /// Gets or sets the entry point.
+    /// </summary>
+    required public string EntryPoint { get; set; }
+
+    /// <summary>
+    /// Gets or sets the script file.
+    /// </summary>
+    required public string ScriptFile { get; set; }
+
+    /// <summary>
+    /// Gets or sets the function bindings.
+    /// </summary>
+    required public FunctionBinding[] Bindings { get; set; }
 }
 
+/// <summary>
+/// Provides information and invocation logic for a function.
+/// </summary>
 class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IServiceProvider serviceProvider, string name)
 {
+    /// <summary>
+    /// Gets the function definition.
+    /// </summary>
     public FunctionDefinition Function { get; } = function;
+
+    /// <summary>
+    /// Gets the method parameters.
+    /// </summary>
     public ParameterInfo[] Parameters { get; } = method.GetParameters();
+
+    /// <summary>
+    /// Gets the function name.
+    /// </summary>
     public string Name { get; } = name;
+
+    /// <summary>
+    /// Gets the service provider.
+    /// </summary>
     public IServiceProvider ServiceProvider { get; } = serviceProvider;
 
-    readonly Type _type = type;
-    readonly MethodInfo _method = method;
-    readonly TimeSpan _timeout = GetFunctionTimeout(method);
+    readonly Type typeField = type;
+    readonly MethodInfo methodField = method;
+    readonly TimeSpan timeoutField = GetFunctionTimeout(method);
 
+    /// <summary>
+    /// Invokes the function asynchronously.
+    /// </summary>
+    /// <param name="parameters">The parameters to pass to the function.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <returns>True if the function executed successfully; otherwise, false.</returns>
     public async Task<bool> InvokeAsync(object?[] parameters, ILoggerFactory loggerFactory)
     {
         bool success = false;
@@ -41,11 +109,11 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         {
             int cancelTokenIndex = Array.FindIndex(parameters, p => p is CancellationToken);
 
-            if (_timeout != TimeSpan.Zero &&
+            if (timeoutField != TimeSpan.Zero &&
                 cancelTokenIndex > -1 &&
                 parameters[cancelTokenIndex] is CancellationToken originalToken)
             {
-                using var timeoutCts = new CancellationTokenSource(_timeout);
+                using var timeoutCts = new CancellationTokenSource(timeoutField);
                 using var joinedCts = CancellationTokenSource.CreateLinkedTokenSource(originalToken, timeoutCts.Token);
 
                 parameters[cancelTokenIndex] = joinedCts.Token;
@@ -84,11 +152,16 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         return success;
     }
 
+    /// <summary>
+    /// Invokes the function core logic asynchronously.
+    /// </summary>
+    /// <param name="parameters">The parameters to pass to the function.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     async Task InvokeAsyncCore(object?[] parameters)
     {
-        var instance = ServiceProvider.GetService(_type);
+        var instance = ServiceProvider.GetService(typeField);
 
-        dynamic? result = _method.Invoke(instance, parameters);
+        dynamic? result = methodField.Invoke(instance, parameters);
 
         if (result is Task task)
         {
@@ -96,6 +169,11 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         }
     }
 
+    /// <summary>
+    /// Loads all function infos from the specified root directory.
+    /// </summary>
+    /// <param name="root">The root directory.</param>
+    /// <returns>A list of <see cref="FunctionInfo"/> objects.</returns>
     public static List<FunctionInfo> Load(string root)
     {
         root = Path.GetFullPath(root);

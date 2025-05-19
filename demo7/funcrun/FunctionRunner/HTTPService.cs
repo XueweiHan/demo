@@ -1,50 +1,77 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+﻿// <copyright file="HTTPService.cs" company="Microsoft">
+//     Copyright (c) Microsoft Corporation.  All rights reserved.
+// </copyright>
+
 using System.Net;
 using System.Text;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace FunctionRunner;
 
+/// <summary>
+/// Provides an HTTP service that listens for incoming requests and responds with a simple message.
+/// </summary>
 class HTTPService(AppSettings appSettings, ILoggerFactory loggerFactory) : BackgroundService
 {
-    readonly HttpListener _httpListener = new();
-    readonly int _port = appSettings.FunctionRunnerHttpPort;
-    readonly ILogger _logger = loggerFactory.CreateLogger("T.Cyan0");
+    /// <summary>
+    /// The HTTP listener instance.
+    /// </summary>
+    readonly HttpListener httpListener = new();
 
+    /// <summary>
+    /// The port on which the HTTP service listens.
+    /// </summary>
+    readonly int port = appSettings.FunctionRunnerHttpPort;
+
+    /// <summary>
+    /// The logger instance for this service.
+    /// </summary>
+    readonly ILogger logger = loggerFactory.CreateLogger("T.Cyan0");
+
+    /// <inheritdoc/>
     public override void Dispose()
     {
-        _httpListener.Close();
+        httpListener.Close();
+        ((IDisposable)httpListener).Dispose();
         base.Dispose();
     }
 
+    /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var name = $"HTTPService";
-        _logger.LogInformation($"{name} is listening on port {_port}");
+        logger.LogInformation($"{name} is listening on port {port}");
 
-        _httpListener.Prefixes.Add($"http://localhost:{_port}/");
+        httpListener.Prefixes.Add($"http://localhost:{port}/");
 
         try
         {
-            _httpListener.Start();
+            httpListener.Start();
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                var context = await _httpListener.GetContextAsync(); // Wait for an incoming request
+                var context = await httpListener.GetContextAsync(); // Wait for an incoming request
                 _ = HandleRequestAsync(context, stoppingToken); // Process the request asynchronously
             }
         }
         catch (HttpListenerException) when (stoppingToken.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"{name} encountered an error");
+            logger.LogError(ex, $"{name} encountered an error");
         }
         finally
         {
-            _logger.LogInformation($"{name} is stopped");
+            logger.LogInformation($"{name} is stopped");
         }
     }
 
+    /// <summary>
+    /// Handles an incoming HTTP request asynchronously.
+    /// </summary>
+    /// <param name="context">The HTTP listener context.</param>
+    /// <param name="stoppingToken">The cancellation token.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     async Task HandleRequestAsync(HttpListenerContext context, CancellationToken stoppingToken)
     {
         try
@@ -63,13 +90,14 @@ class HTTPService(AppSettings appSettings, ILoggerFactory loggerFactory) : Backg
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error handling request");
+            logger.LogError(ex, $"Error handling request");
         }
     }
 
+    /// <inheritdoc/>
     public override Task StopAsync(CancellationToken cancellationToken)
     {
-        _httpListener.Stop(); // Stop the listener immediately
+        httpListener.Stop(); // Stop the listener immediately
         return base.StopAsync(cancellationToken);
     }
 }
