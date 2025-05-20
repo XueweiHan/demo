@@ -18,6 +18,11 @@ class HeartBeatService(AppSettings appSettings, ILoggerFactory loggerFactory) : 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (appSettings.HeartbeatLogIntervalInSeconds <= 0)
+        {
+            return; // No heartbeat service to start
+        }
+
         var name = $"HeartBeatService";
         loggerFactory.CreateLogger("T.Cyan0").LogInformation($"{name} is starting");
 

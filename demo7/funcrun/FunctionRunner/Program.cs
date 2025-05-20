@@ -32,15 +32,19 @@ class Program
                 config.AddJsonFile("appSettings.json", optional: true);
                 config.AddEnvironmentVariables();
             })
-            .ConfigureLogging(AnsiConsoleFormatter.LoggingBuilder)
             .ConfigureServices((ctx, services) =>
             {
                 ctx.Configuration.Bind(appSettings);
                 ctx.Configuration.GetSection("CONFIG_FILE").Bind(appSettings.ConfigFile);
                 appSettings.ConfigJson = JsonHelper.GetEnvJson<Config>("CONFIG_JSON") ?? ctx.Configuration.GetSection("CONFIG_JSON").Get<Config>();
-                services.AddSingleton(appSettings);
 
                 appSettings.ExecuteAsync(loggerFactory).Wait();
+
+                services.AddSingleton(loggerFactory);
+                services.AddSingleton(appSettings);
+                services.AddHostedService<HTTPService>();
+                services.AddHostedService<HeartBeatService>();
+                AddExecutableServices(services, appSettings.ConfigJson!.Executables);
 
                 if (!appSettings.DisableFunctionRunner && !string.IsNullOrEmpty(appSettings.AzureWebJobsScriptRoot))
                 {
@@ -51,18 +55,6 @@ class Program
                         AddFunctionServices(services, funcInfo, loggerFactory);
                     }
                 }
-
-                if (appSettings.FunctionRunnerHttpPort > 0)
-                {
-                    services.AddHostedService<HTTPService>();
-                }
-
-                if (appSettings.HeartbeatLogIntervalInSeconds > 0)
-                {
-                    services.AddHostedService<HeartBeatService>();
-                }
-
-                AddExecutableServices(services, appSettings.ConfigJson!.Executables);
             })
             .ConfigureHostOptions(options =>
             {

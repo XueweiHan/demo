@@ -40,6 +40,11 @@ class HTTPService(AppSettings appSettings, ILoggerFactory loggerFactory) : Backg
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (appSettings.FunctionRunnerHttpPort <= 0)
+        {
+            return; // No HTTP service to start
+        }
+
         var name = $"HTTPService";
         logger.LogInformation($"{name} is listening on port {port}");
 
