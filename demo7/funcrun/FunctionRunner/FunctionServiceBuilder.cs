@@ -59,6 +59,14 @@ static class FunctionServiceProviderBuilderExtensions
             .BuildServiceProvider();
     }
 
+    /// <summary>
+    /// Builds a service provider for isolated worker Azure Functions.
+    /// </summary>
+    /// <param name="assembly">The assembly containing the function.</param>
+    /// <param name="root">The application root path.</param>
+    /// <param name="type">The function type to register.</param>
+    /// <returns>An <see cref="IServiceProvider"/> instance.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the required static field is not found.</exception>
     public static IServiceProvider ServiceProviderIsolatedBuild(this Assembly assembly, string root, Type type)
     {
         var services = new ServiceCollection();
@@ -115,7 +123,11 @@ static class FunctionServiceProviderBuilderExtensions
 
 /// <summary>
 /// Builder for function runner services and configuration.
+/// Implements <see cref="IFunctionsHostBuilder"/>, <see cref="IFunctionsConfigurationBuilder"/>, and <see cref="IOptions{FunctionsHostBuilderContext}"/>.
 /// </summary>
+/// <param name="services">The service collection.</param>
+/// <param name="configurationBuilder">The configuration builder.</param>
+/// <param name="context">The host builder context.</param>
 class FunctionRunnerBuilder(IServiceCollection services, IConfigurationBuilder configurationBuilder, FunctionsHostBuilderContext context)
     : IFunctionsHostBuilder, IFunctionsConfigurationBuilder, IOptions<FunctionsHostBuilderContext>
 {
@@ -131,40 +143,56 @@ class FunctionRunnerBuilder(IServiceCollection services, IConfigurationBuilder c
 
 /// <summary>
 /// Host builder context for function runner.
+/// Inherits from <see cref="FunctionsHostBuilderContext"/>.
 /// </summary>
+/// <param name="webJobsBuilderContext">The WebJobs builder context.</param>
 class FunctionRunnerHostBuilderContext(WebJobsBuilderContext webJobsBuilderContext) : FunctionsHostBuilderContext(webJobsBuilderContext)
 {
 }
 
+/// <summary>
+/// Proxy for <see cref="IServiceProvider"/> that attempts to resolve services dynamically if not found in the main provider.
+/// </summary>
+/// <param name="source">The source service provider.</param>
 class ServiceProviderProxy(IServiceProvider source) : IServiceProvider
 {
     readonly IServiceProvider _source = source;
 
+    /// <summary>
+    /// Gets the service object of the specified type.
+    /// If not found, attempts to construct it using a new service collection.
+    /// </summary>
+    /// <param name="serviceType">The type of service to retrieve.</param>
+    /// <returns>The service object, or null if not found.</returns>
     public object? GetService(Type serviceType)
     {
         var instance = _source.GetService(serviceType);
 
         if (instance == null)
         {
-            var args = serviceType.GetConstructors().First()!.GetParameters();
             var services = new ServiceCollection();
 
-            var configuration = _source.GetService<IConfiguration>();
-
-            services
-                .AddTransient(serviceType)
-                .AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build())
-                .AddLogging(loggingBuilder => loggingBuilder.Build(services));
-
+            var args = serviceType.GetConstructors().First()!.GetParameters();
             foreach (var arg in args)
             {
                 var argType = arg.ParameterType;
-                if (argType == typeof(ILoggerFactory)) continue;
+                if (argType.IsAssignableTo(typeof(ILoggerFactory)) ||
+                    argType.IsAssignableTo(typeof(ILogger)))
+                {
+                    continue;
+                }
 
                 services.AddSingleton(argType, _source.GetService(argType)!);
             }
 
-            using var serviceProvider = services.BuildServiceProvider();
+            var configuration = _source.GetService<IConfiguration>();
+
+            using var serviceProvider = services
+                .AddTransient(serviceType)
+                .AddSingleton<IConfiguration>(configuration ?? new ConfigurationBuilder().AddEnvironmentVariables().Build())
+                .AddLogging(loggingBuilder => loggingBuilder.Build(services))
+                .BuildServiceProvider();
+
             instance = serviceProvider.GetService(serviceType);
         }
 

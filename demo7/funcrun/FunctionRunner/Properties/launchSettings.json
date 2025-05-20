@@ -3,7 +3,7 @@
     "FunctionRunner": {
       "commandName": "Project",
       "environmentVariables": {
-        "AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\FunctionsApp\\bin",
+        "AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\FunctionsApp3\\bin",
         "CONFIG_FILE": " ",
         "CONFIG_JSON": "{\"Keyvaults\": [],    \"CopyFiles\": null,    \"Executables\": [      {        \"Exec\": \"cmd\",   \"Args\": \"\"     }    ]  }",
 

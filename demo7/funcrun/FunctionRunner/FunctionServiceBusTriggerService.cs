@@ -4,6 +4,7 @@
 
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,26 +12,22 @@ using Microsoft.Extensions.Logging;
 namespace FunctionRunner;
 
 /// <summary>
-/// Service for running a function triggered by Azure Service Bus messages.
+/// Service for running Azure Functions triggered by Service Bus messages.
 /// </summary>
-class FunctionServiceBusTriggerService : FunctionBaseService
+/// <remarks>
+/// Handles Service Bus message processing, error handling, and function invocation.
+/// </remarks>
+/// <param name="funcInfo">The function information.</param>
+/// <param name="loggerFactory">The logger factory.</param>
+class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
+    : FunctionBaseService(funcInfo, loggerFactory)
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="FunctionServiceBusTriggerService"/> class.
+    /// Gets the fully qualified Service Bus namespace.
     /// </summary>
-    /// <param name="funcInfo">The function information.</param>
-    /// <param name="loggerFactory">The logger factory.</param>
-    public FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
-        : base(funcInfo, loggerFactory)
-    {
-    }
-
-    /// <summary>
-    /// Gets the fully qualified namespace from configuration.
-    /// </summary>
-    private string? FullyQualifiedNamespace => funcInfo.ServiceProvider
-        .GetRequiredService<IConfiguration>()
-        .GetValue<string>($"{binding.Connection}:fullyQualifiedNamespace");
+    string FullyQualifiedNamespace = funcInfo.ServiceProvider
+            .GetRequiredService<IConfiguration>()
+            .GetValue<string>($"{funcInfo.Function.Bindings[0].Connection}:fullyQualifiedNamespace")!;
 
     /// <inheritdoc/>
     public override void PrintFunctionInfo(bool u)
@@ -88,22 +85,29 @@ class FunctionServiceBusTriggerService : FunctionBaseService
     /// </summary>
     /// <param name="args">The message event arguments.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task MessageHandlerAsync(ProcessMessageEventArgs args)
+    async Task MessageHandlerAsync(ProcessMessageEventArgs args)
     {
         var body = args.Message.Body.ToString();
 
-        var parameters = PrepareParameters(body, args.CancellationToken);
+        var actionCalled = false;
+        var action = new FunctionRunnerServiceBusMessageActions(args, () => actionCalled = true);
+
+        var parameters = PrepareParameters(body, args.CancellationToken, args.Message,
+                            new Tuple<Type, object>(typeof(ServiceBusMessageActions), action));
 
         var success = await funcInfo.InvokeAsync(parameters, loggerFactory);
 
-        if (success)
+        if (!actionCalled)
         {
-            // complete the message. message is deleted from the queue. 
-            await args.CompleteMessageAsync(args.Message, args.CancellationToken);
-        }
-        else
-        {
-            await args.AbandonMessageAsync(args.Message, null, args.CancellationToken);
+            if (success)
+            {
+                // complete the message. message is deleted from the queue. 
+                await args.CompleteMessageAsync(args.Message, args.CancellationToken);
+            }
+            else
+            {
+                await args.AbandonMessageAsync(args.Message, null, args.CancellationToken);
+            }
         }
     }
 
@@ -112,9 +116,105 @@ class FunctionServiceBusTriggerService : FunctionBaseService
     /// </summary>
     /// <param name="args">The error event arguments.</param>
     /// <returns>A completed task.</returns>
-    private Task ErrorHandlerAsync(ProcessErrorEventArgs args)
+    Task ErrorHandlerAsync(ProcessErrorEventArgs args)
     {
-        logger.LogError(args.Exception.ToString());
+        logger.LogError(args.Exception, $"Service Bus error in entity '{args.EntityPath}' (namespace: '{args.FullyQualifiedNamespace}')");
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Provides actions for processing Service Bus messages.
+    /// </summary>
+    /// <param name="args">The message event arguments.</param>
+    /// <param name="actionCalled">Callback to indicate an action was called.</param>
+    class FunctionRunnerServiceBusMessageActions(ProcessMessageEventArgs args, Action actionCalled) : ServiceBusMessageActions
+    {
+        readonly ProcessMessageEventArgs args = args;
+        readonly Action actionCalled = actionCalled;
+
+        /// <inheritdoc/>
+        /// <summary>
+        /// Completes the specified message, removing it from the queue.
+        /// </summary>
+        /// <param name="message">The message to complete.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task CompleteMessageAsync(
+            ServiceBusReceivedMessage message,
+            CancellationToken cancellationToken = default)
+        {
+            actionCalled();
+            return args.CompleteMessageAsync(message, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        /// <summary>
+        /// Abandons the specified message, making it available for reprocessing.
+        /// </summary>
+        /// <param name="message">The message to abandon.</param>
+        /// <param name="propertiesToModify">Properties to modify on the message.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task AbandonMessageAsync(
+            ServiceBusReceivedMessage message,
+            IDictionary<string, object>? propertiesToModify = default,
+            CancellationToken cancellationToken = default)
+        {
+            actionCalled();
+            return args.AbandonMessageAsync(message, propertiesToModify, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        /// <summary>
+        /// Dead-letters the specified message.
+        /// </summary>
+        /// <param name="message">The message to dead-letter.</param>
+        /// <param name="propertiesToModify">Properties to modify on the message.</param>
+        /// <param name="deadLetterReason">The reason for dead-lettering.</param>
+        /// <param name="deadLetterErrorDescription">Error description for dead-lettering.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task DeadLetterMessageAsync(
+            ServiceBusReceivedMessage message,
+            Dictionary<string, object>? propertiesToModify = default,
+            string? deadLetterReason = default,
+            string? deadLetterErrorDescription = default,
+            CancellationToken cancellationToken = default)
+        {
+            actionCalled();
+            return args.DeadLetterMessageAsync(message, propertiesToModify, deadLetterReason, deadLetterErrorDescription, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        /// <summary>
+        /// Defers the specified message.
+        /// </summary>
+        /// <param name="message">The message to defer.</param>
+        /// <param name="propertiesToModify">Properties to modify on the message.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task DeferMessageAsync(
+            ServiceBusReceivedMessage message,
+            IDictionary<string, object>? propertiesToModify = default,
+            CancellationToken cancellationToken = default)
+        {
+            actionCalled();
+            return args.DeferMessageAsync(message, propertiesToModify, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        /// <summary>
+        /// Renews the lock on the specified message.
+        /// </summary>
+        /// <param name="message">The message to renew the lock for.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task RenewMessageLockAsync(
+            ServiceBusReceivedMessage message,
+            CancellationToken cancellationToken = default)
+        {
+            actionCalled();
+            return args.RenewMessageLockAsync(message, cancellationToken);
+        }
     }
 }

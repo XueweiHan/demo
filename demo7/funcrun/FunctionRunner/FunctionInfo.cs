@@ -182,11 +182,16 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
 
         LoadInMemoryFunctions(root, funcInfos);
 
-        //LoadIsolatedFunctions(root, funcInfos);
+        LoadIsolatedFunctions(root, funcInfos);
 
         return funcInfos;
     }
 
+    /// <summary>
+    /// Loads in-memory functions from the specified root directory.
+    /// </summary>
+    /// <param name="root"></param>
+    /// <param name="funcInfos"></param>
     private static void LoadInMemoryFunctions(string root, List<FunctionInfo> funcInfos)
     {
         var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
@@ -216,6 +221,11 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         }
     }
 
+    /// <summary>
+    /// Loads isolated functions from the specified root directory.
+    /// </summary>
+    /// <param name="root"></param>
+    /// <param name="funcInfos"></param>
     static void LoadIsolatedFunctions(string root, List<FunctionInfo> funcInfos)
     {
         var functionJsonFiles = Directory.GetFiles(root, "functions.metadata", SearchOption.AllDirectories);

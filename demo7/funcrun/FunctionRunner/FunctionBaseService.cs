@@ -90,7 +90,14 @@ class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory loggerFactory) :
         var services = new ServiceCollection();
         foreach (var a in arg)
         {
-            services.AddSingleton(a.GetType(), a);
+            if (a is Tuple<Type, object> tuple)
+            {
+                services.AddSingleton(tuple.Item1, tuple.Item2);
+            }
+            else
+            {
+                services.AddSingleton(a.GetType(), a);
+            }
         }
         services
             .AddLogging(loggingBuilder => loggingBuilder.Build(services))

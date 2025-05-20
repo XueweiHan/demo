@@ -23,8 +23,11 @@ internal class ExecutableService(string fileName, string arguments, ILoggerFacto
     /// <inheritdoc/>
     public override void Dispose()
     {
-        process?.Dispose();
-        process = null;
+        if (process != null)
+        {
+            process.Dispose();
+            process = null;
+        }
         loggerFactory.Dispose();
         base.Dispose();
     }
@@ -53,9 +56,9 @@ internal class ExecutableService(string fileName, string arguments, ILoggerFacto
 
             var tcs = new TaskCompletionSource<int>();
 
-            process.OutputDataReceived += (s, e) => elogger.LogInformation(e.Data);
+            process.OutputDataReceived += (s, e) => elogger.LogInformation($"{fileName}: {e.Data}");
 
-            process.ErrorDataReceived += (s, e) => elogger.LogError(e.Data);
+            process.ErrorDataReceived += (s, e) => elogger.LogError($"{fileName}: {e.Data}");
 
             process.Exited += (s, e) => tcs.TrySetResult(process.ExitCode);
 
