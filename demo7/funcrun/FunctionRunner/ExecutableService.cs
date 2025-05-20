@@ -28,7 +28,6 @@ internal class ExecutableService(string fileName, string arguments, ILoggerFacto
             process.Dispose();
             process = null;
         }
-        loggerFactory.Dispose();
         base.Dispose();
     }
 

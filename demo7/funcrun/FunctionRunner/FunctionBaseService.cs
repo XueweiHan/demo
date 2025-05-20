@@ -48,13 +48,6 @@ class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory loggerFactory) :
                                     .GetValue<bool>($"AzureWebJobs.{funcInfo.Name}.Disabled");
 
     /// <inheritdoc/>
-    public override void Dispose()
-    {
-        loggerFactory.Dispose();
-        base.Dispose();
-    }
-
-    /// <inheritdoc/>
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         return Task.CompletedTask;

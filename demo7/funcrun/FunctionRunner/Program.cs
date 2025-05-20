@@ -24,7 +24,7 @@ class Program
     static async Task Main(string[] args)
     {
         var appSettings = new AppSettings();
-        var loggerFactory = LoggerFactory.Create(AnsiConsoleFormatter.LoggingBuilder);
+        using var loggerFactory = LoggerFactory.Create(AnsiConsoleFormatter.LoggingBuilder);
 
         using var host = Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration(config =>

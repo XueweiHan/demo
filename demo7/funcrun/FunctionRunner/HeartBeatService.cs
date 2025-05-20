@@ -13,24 +13,17 @@ namespace FunctionRunner;
 class HeartBeatService(AppSettings appSettings, ILoggerFactory loggerFactory) : BackgroundService
 {
     readonly TimeSpan heartbeatLogInterval = TimeSpan.FromSeconds(appSettings.HeartbeatLogIntervalInSeconds);
-    readonly ILoggerFactory loggerFactoryField = loggerFactory;
-
-    /// <inheritdoc/>
-    public override void Dispose()
-    {
-        loggerFactoryField.Dispose();
-        base.Dispose();
-    }
+    readonly ILoggerFactory loggerFactory = loggerFactory;
 
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var name = $"HeartBeatService";
-        loggerFactoryField.CreateLogger("T.Cyan0").LogInformation($"{name} is starting");
+        loggerFactory.CreateLogger("T.Cyan0").LogInformation($"{name} is starting");
 
         try
         {
-            var logger = loggerFactoryField.CreateLogger("T.Green3");
+            var logger = loggerFactory.CreateLogger("T.Green3");
             while (!stoppingToken.IsCancellationRequested)
             {
                 logger.LogInformation($"pod heartbeat from {Environment.MachineName}");
@@ -39,7 +32,7 @@ class HeartBeatService(AppSettings appSettings, ILoggerFactory loggerFactory) : 
         }
         finally
         {
-            loggerFactoryField.CreateLogger("T.Cyan0").LogInformation($"{name} is stopped");
+            loggerFactory.CreateLogger("T.Cyan0").LogInformation($"{name} is stopped");
         }
     }
 }
