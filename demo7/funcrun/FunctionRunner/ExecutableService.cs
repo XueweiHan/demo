@@ -13,9 +13,12 @@ namespace FunctionRunner;
 /// </summary>
 internal class ExecutableService(string fileName, string arguments, ILoggerFactory loggerFactory) : BackgroundService
 {
+    #pragma warning disable CA2213 // Disposable fields should be disposed
+    readonly ILoggerFactory loggerFactory = loggerFactory;  // loggerFactory is a singleton, so it doesn't need to be disposed
+    #pragma warning restore CA2213
+
     readonly string fileName = fileName;
     readonly string arguments = arguments;
-    readonly ILoggerFactory loggerFactory = loggerFactory;
     readonly ILogger logger = loggerFactory.CreateLogger("T.Cyan0");
     readonly ILogger elogger = loggerFactory.CreateLogger("T");
     Process? process;

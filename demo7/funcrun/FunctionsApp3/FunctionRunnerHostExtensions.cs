@@ -6,7 +6,7 @@ static class FunctionRunnerHostExtensions
     {
         (FunctionRunnerRun ?? HostingAbstractionsHostExtensions.Run)(host);
     }
-    
-    #pragma warning disable CS0649
+
+    #pragma warning disable CS0649 // Field is never assigned to
     static Action<IHost>? FunctionRunnerRun;
 }

@@ -2,6 +2,7 @@
 //     Copyright (c) Microsoft Corporation.  All rights reserved.
 // </copyright>
 
+using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
@@ -12,26 +13,28 @@ using Microsoft.Extensions.Logging;
 namespace FunctionRunner;
 
 /// <summary>
-/// Service for running Azure Functions triggered by Service Bus messages.
+/// Service for running a function triggered by Azure Service Bus messages.
 /// </summary>
-/// <remarks>
-/// Handles Service Bus message processing, error handling, and function invocation.
-/// </remarks>
-/// <param name="funcInfo">The function information.</param>
-/// <param name="loggerFactory">The logger factory.</param>
 class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFactory)
     : FunctionBaseService(funcInfo, loggerFactory)
 {
-    /// <summary>
-    /// Gets the fully qualified Service Bus namespace.
-    /// </summary>
-    string FullyQualifiedNamespace = funcInfo.ServiceProvider
-            .GetRequiredService<IConfiguration>()
-            .GetValue<string>($"{funcInfo.Function.Bindings[0].Connection}:fullyQualifiedNamespace")!;
+    readonly IConfiguration configuration = funcInfo.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    string? ConnectionString => configuration.GetValue<string>($"{binding.Connection}");
+
+    string? FullyQualifiedNamespace => configuration.GetValue<string>($"{binding.Connection}:fullyQualifiedNamespace");
+
+    string? ClientId => configuration.GetValue<string>($"{binding.Connection}:clientId")
+                     ?? configuration.GetValue<string>($"AZURE_CLIENT_ID");
+
+    string? TenantId => configuration.GetValue<string>($"{binding.Connection}:tenantId")
+                     ?? configuration.GetValue<string>($"AZURE_TENANT_ID");
 
     /// <inheritdoc/>
     public override void PrintFunctionInfo(bool u)
     {
+        binding.QueueName = ResolveBindingExpressions(binding.QueueName);
+
         base.PrintFunctionInfo();
         elogger.LogInformation($"  Connection: {FullyQualifiedNamespace}");
         elogger.LogInformation($"  Queue:      {binding.QueueName}");
@@ -40,21 +43,26 @@ class FunctionServiceBusTriggerService(FunctionInfo funcInfo, ILoggerFactory log
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await base.ExecuteAsync(stoppingToken);
-        if (IsDisabled)
-        {
-            return;
-        }
+        if (IsDisabled) { return; }
 
         PrintStatus(FunctionAction.Start);
 
-        await using var client = new ServiceBusClient(
-            FullyQualifiedNamespace,
-            new DefaultAzureCredential(),
-            new ServiceBusClientOptions()
-            {
-                TransportType = ServiceBusTransportType.AmqpWebSockets
-            });
+        TokenCredential credential = string.IsNullOrEmpty(ClientId)
+                                    ? new DefaultAzureCredential()
+                                    : new WorkloadIdentityCredential(new WorkloadIdentityCredentialOptions
+                                    {
+                                        ClientId = ClientId,
+                                        TenantId = TenantId,
+                                    });
+
+        await using var client = !string.IsNullOrEmpty(ConnectionString)
+                                ? new ServiceBusClient(
+                                    ConnectionString,
+                                    new ServiceBusClientOptions() { TransportType = ServiceBusTransportType.AmqpWebSockets })
+                                : new ServiceBusClient(
+                                    FullyQualifiedNamespace,
+                                    credential,
+                                    new ServiceBusClientOptions() { TransportType = ServiceBusTransportType.AmqpWebSockets });
 
         await using var processor = client.CreateProcessor(binding.QueueName);
 

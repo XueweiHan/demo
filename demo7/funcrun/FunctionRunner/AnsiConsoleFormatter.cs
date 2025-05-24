@@ -13,8 +13,11 @@ namespace FunctionRunner;
 /// <summary>
 /// Provides a custom console formatter for logging with ANSI color support.
 /// </summary>
-class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
+internal partial class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
 {
+    [GeneratedRegex(@"^(?<color>[A-Za-z]+)(?<index>-?\d+)$")]
+    private static partial Regex ColorIndexRegex();
+
     /// <inheritdoc/>
     public override void Write<TState>(in LogEntry<TState> logEntry, IExternalScopeProvider? scopeProvider, TextWriter textWriter)
     {
@@ -23,10 +26,7 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
         var message = logEntry.Formatter.Invoke(logEntry.State, logEntry.Exception);
         var exception = logEntry.Exception == null ? string.Empty : $" {logEntry.Exception}".Replace(Environment.NewLine, "  ");
 
-        if (message == null)
-        {
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(message)) { return; }
 
         var words = message.Split(' ');
         int wordCount = words.Length;
@@ -53,7 +53,7 @@ class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
                 continue;
             }
 
-            var match = Regex.Match(section, @"^(?<color>[A-Za-z]+)(?<index>-?\d+)$");
+            var match = ColorIndexRegex().Match(section);
             if (!match.Success)
             {
                 colorFormat = false;

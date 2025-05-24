@@ -37,10 +37,8 @@ static class FunctionServiceProviderBuilderExtensions
             var startupType = startupAttr.GetType().GetProperty("WebJobsStartupType")!.GetValue(startupAttr) as Type;
             dynamic startup = Activator.CreateInstance(startupType!)!;
 
-            var webJobsBuilderContext = new WebJobsBuilderContext()
-            {
-                ApplicationRootPath = root,
-            };
+            var webJobsBuilderContext = new WebJobsBuilderContext() { ApplicationRootPath = root };
+
             var functionRunnerBuilder = new FunctionRunnerBuilder(
                 services, new ConfigurationBuilder(), new FunctionRunnerHostBuilderContext(webJobsBuilderContext));
 
@@ -89,7 +87,7 @@ static class FunctionServiceProviderBuilderExtensions
 
         var entryPoint = assembly.EntryPoint!;
         var parameters = entryPoint.GetParameters();
-        object?[] args = parameters.Length == 0 ? [] : [Array.Empty<string>()];
+        object?[] args = parameters.Length == 0 ? Array.Empty<object>() : new object[] { Array.Empty<string>() };
 
         var result = entryPoint.Invoke(null, args);
         if (result is Task task)
@@ -123,11 +121,7 @@ static class FunctionServiceProviderBuilderExtensions
 
 /// <summary>
 /// Builder for function runner services and configuration.
-/// Implements <see cref="IFunctionsHostBuilder"/>, <see cref="IFunctionsConfigurationBuilder"/>, and <see cref="IOptions{FunctionsHostBuilderContext}"/>.
 /// </summary>
-/// <param name="services">The service collection.</param>
-/// <param name="configurationBuilder">The configuration builder.</param>
-/// <param name="context">The host builder context.</param>
 class FunctionRunnerBuilder(IServiceCollection services, IConfigurationBuilder configurationBuilder, FunctionsHostBuilderContext context)
     : IFunctionsHostBuilder, IFunctionsConfigurationBuilder, IOptions<FunctionsHostBuilderContext>
 {
@@ -143,9 +137,7 @@ class FunctionRunnerBuilder(IServiceCollection services, IConfigurationBuilder c
 
 /// <summary>
 /// Host builder context for function runner.
-/// Inherits from <see cref="FunctionsHostBuilderContext"/>.
 /// </summary>
-/// <param name="webJobsBuilderContext">The WebJobs builder context.</param>
 class FunctionRunnerHostBuilderContext(WebJobsBuilderContext webJobsBuilderContext) : FunctionsHostBuilderContext(webJobsBuilderContext)
 {
 }
@@ -156,7 +148,7 @@ class FunctionRunnerHostBuilderContext(WebJobsBuilderContext webJobsBuilderConte
 /// <param name="source">The source service provider.</param>
 class ServiceProviderProxy(IServiceProvider source) : IServiceProvider
 {
-    readonly IServiceProvider _source = source;
+    readonly IServiceProvider source = source;
 
     /// <summary>
     /// Gets the service object of the specified type.
@@ -166,7 +158,7 @@ class ServiceProviderProxy(IServiceProvider source) : IServiceProvider
     /// <returns>The service object, or null if not found.</returns>
     public object? GetService(Type serviceType)
     {
-        var instance = _source.GetService(serviceType);
+        var instance = source.GetService(serviceType);
 
         if (instance == null)
         {
@@ -182,10 +174,10 @@ class ServiceProviderProxy(IServiceProvider source) : IServiceProvider
                     continue;
                 }
 
-                services.AddSingleton(argType, _source.GetService(argType)!);
+                services.AddSingleton(argType, source.GetService(argType)!);
             }
 
-            var configuration = _source.GetService<IConfiguration>();
+            var configuration = source.GetService<IConfiguration>();
 
             using var serviceProvider = services
                 .AddTransient(serviceType)

@@ -13,7 +13,7 @@ namespace FunctionRunner;
 /// <summary>
 /// Base service for function execution and management.
 /// </summary>
-class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory loggerFactory) : BackgroundService
+internal partial class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory loggerFactory) : BackgroundService
 {
     /// <summary>
     /// Gets the function information.
@@ -23,7 +23,9 @@ class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory loggerFactory) :
     /// <summary>
     /// Gets the logger factory.
     /// </summary>
-    protected readonly ILoggerFactory loggerFactory = loggerFactory;
+    #pragma warning disable CA2213 // Disposable fields should be disposed
+    protected readonly ILoggerFactory loggerFactory = loggerFactory;  // loggerFactory is a singleton, so it doesn't need to be disposed
+    #pragma warning restore CA2213
 
     /// <summary>
     /// Gets the logger for general logging.
@@ -59,9 +61,6 @@ class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory loggerFactory) :
     /// <param name="unsupported">Indicates if the function is unsupported.</param>
     public virtual void PrintFunctionInfo(bool unsupported = false)
     {
-        binding.Schedule = ResolveBindingExpressions(binding.Schedule);
-        binding.QueueName = ResolveBindingExpressions(binding.QueueName);
-
         var suffix = unsupported ? $" (Unsupported)" :
                      IsDisabled ? $" (Disabled)" :
                                    string.Empty;
@@ -112,35 +111,35 @@ class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory loggerFactory) :
         Stop,
     }
 
-    static readonly Dictionary<FunctionAction, string> messages = new()
-    {
-        [FunctionAction.Start] = "is starting",
-        [FunctionAction.Stop] = "is stopped",
-    };
-
     /// <summary>
     /// Prints the status of the function.
     /// </summary>
     /// <param name="action">The action performed.</param>
     protected void PrintStatus(FunctionAction action)
     {
-        var message = messages.TryGetValue(action, out var result) ? result : string.Empty;
+        var message = action switch
+        {
+            FunctionAction.Start => "is starting",
+            FunctionAction.Stop => "is stopped",
+            _ => string.Empty,
+        };
 
         logger.LogInformation($"{funcInfo.Name} {message}");
     }
 
-    static readonly Regex expressionPattern = new("%([^%]+)%");
+    [GeneratedRegex("%([^%]+)%")]
+    private static partial Regex ExpressionPatternRegex();
 
     /// <summary>
     /// Resolves binding expressions in the given string.
     /// </summary>
     /// <param name="expression">The expression to resolve.</param>
     /// <returns>The resolved expression.</returns>
-    string? ResolveBindingExpressions(string? expression)
+    protected string? ResolveBindingExpressions(string? expression)
     {
-        if (expression != null)
+        if (!string.IsNullOrWhiteSpace(expression))
         {
-            expression = expressionPattern.Replace(
+            expression = ExpressionPatternRegex().Replace(
                 expression,
                 match => funcInfo.ServiceProvider
                             .GetRequiredService<IConfiguration>()

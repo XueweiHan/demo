@@ -10,15 +10,10 @@ namespace FunctionRunner;
 /// <summary>
 /// Provides helper methods for JSON serialization and deserialization.
 /// </summary>
-static class JsonHelper
+internal static partial class JsonHelper
 {
-    /// <summary>
-    /// Gets the <see cref="JsonSerializerOptions"/> used for deserialization.
-    /// </summary>
-    static readonly JsonSerializerOptions DeserializeOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    [GeneratedRegex(@"//.*?$", RegexOptions.Multiline)]
+    private static partial Regex JsonSingleLineCommentRegex();
 
     /// <summary>
     /// Deserializes the specified JSON string to an object of type <typeparamref name="T"/>.
@@ -28,13 +23,10 @@ static class JsonHelper
     /// <returns>The deserialized object, or <c>default</c> if the input is null or empty.</returns>
     public static T? Deserialize<T>(string? json)
     {
-        if (string.IsNullOrEmpty(json))
-        {
-            return default;
-        }
+        if (string.IsNullOrEmpty(json)) { return default; }
 
-        json = Regex.Replace(json, @"//.*?$", string.Empty, RegexOptions.Multiline);
-        return JsonSerializer.Deserialize<T>(json, DeserializeOptions);
+        json = JsonSingleLineCommentRegex().Replace(json, string.Empty);
+        return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 
     /// <summary>

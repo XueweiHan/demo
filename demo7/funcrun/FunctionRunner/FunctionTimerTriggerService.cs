@@ -16,6 +16,8 @@ class FunctionTimerTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFa
     /// <inheritdoc/>
     public override void PrintFunctionInfo(bool u)
     {
+        binding.Schedule = ResolveBindingExpressions(binding.Schedule);
+
         base.PrintFunctionInfo();
         elogger.LogInformation($"  Schedule:   {binding.Schedule}");
     }
@@ -23,11 +25,7 @@ class FunctionTimerTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFa
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await base.ExecuteAsync(stoppingToken);
-        if (IsDisabled)
-        {
-            return;
-        }
+        if (IsDisabled) { return; }
 
         try
         {
@@ -41,33 +39,18 @@ class FunctionTimerTriggerService(FunctionInfo funcInfo, ILoggerFactory loggerFa
             }
 
             var schedule = CrontabSchedule.Parse(binding.Schedule, new CrontabSchedule.ParseOptions { IncludingSeconds = true });
-            var nextCheckTimeSpan = TimeSpan.FromDays(1);
 
-            for (; ; )
+            while (!stoppingToken.IsCancellationRequested)
             {
-                DateTime next;
-                for (; ; )
-                {
-                    var now = DateTime.UtcNow;
-                    next = schedule.GetNextOccurrence(now);
-                    var timeSpan = next - now;
-                    if (timeSpan < nextCheckTimeSpan)
-                    {
-                        if (timeSpan > TimeSpan.Zero)
-                        {
-                            await Task.Delay(timeSpan, stoppingToken);
-                        }
-                        break;
-                    }
-                    else
-                    {
-                        await Task.Delay(nextCheckTimeSpan, stoppingToken);
-                    }
-                }
+                var now = DateTime.UtcNow;
+                var next = schedule.GetNextOccurrence(now);
+                var timeSpan = next - now;
+
+                await Task.Delay(timeSpan, stoppingToken);
 
                 await funcInfo.InvokeAsync(parameters, loggerFactory);
 
-                while (schedule.GetNextOccurrence(DateTime.UtcNow) == next)
+                while (schedule.GetNextOccurrence(DateTime.UtcNow) == next && !stoppingToken.IsCancellationRequested)
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(100), stoppingToken);
                 }

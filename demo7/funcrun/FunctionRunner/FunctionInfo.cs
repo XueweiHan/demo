@@ -89,9 +89,9 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
     /// </summary>
     public IServiceProvider ServiceProvider { get; } = serviceProvider;
 
-    readonly Type typeField = type;
-    readonly MethodInfo methodField = method;
-    readonly TimeSpan timeoutField = GetFunctionTimeout(method);
+    readonly Type type = type;
+    readonly MethodInfo method = method;
+    readonly TimeSpan timeout = GetFunctionTimeout(method);
 
     /// <summary>
     /// Invokes the function asynchronously.
@@ -109,11 +109,11 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         {
             int cancelTokenIndex = Array.FindIndex(parameters, p => p is CancellationToken);
 
-            if (timeoutField != TimeSpan.Zero &&
+            if (timeout != TimeSpan.Zero &&
                 cancelTokenIndex > -1 &&
                 parameters[cancelTokenIndex] is CancellationToken originalToken)
             {
-                using var timeoutCts = new CancellationTokenSource(timeoutField);
+                using var timeoutCts = new CancellationTokenSource(timeout);
                 using var joinedCts = CancellationTokenSource.CreateLinkedTokenSource(originalToken, timeoutCts.Token);
 
                 parameters[cancelTokenIndex] = joinedCts.Token;
@@ -159,9 +159,9 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
     /// <returns>A task representing the asynchronous operation.</returns>
     async Task InvokeAsyncCore(object?[] parameters)
     {
-        var instance = ServiceProvider.GetService(typeField);
+        var instance = ServiceProvider.GetService(type);
 
-        dynamic? result = methodField.Invoke(instance, parameters);
+        var result = method.Invoke(instance, parameters);
 
         if (result is Task task)
         {
@@ -180,7 +180,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         Directory.SetCurrentDirectory(root);
         var funcInfos = new List<FunctionInfo>();
 
-        LoadInMemoryFunctions(root, funcInfos);
+        LoadInProcessFunctions(root, funcInfos);
 
         LoadIsolatedFunctions(root, funcInfos);
 
@@ -192,7 +192,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
     /// </summary>
     /// <param name="root"></param>
     /// <param name="funcInfos"></param>
-    private static void LoadInMemoryFunctions(string root, List<FunctionInfo> funcInfos)
+    private static void LoadInProcessFunctions(string root, List<FunctionInfo> funcInfos)
     {
         var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
         foreach (var file in functionJsonFiles)
@@ -233,7 +233,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         {
             var functionJson = File.ReadAllText(file);
             var functions = JsonHelper.Deserialize<FunctionDefinition[]>(functionJson);
-            foreach (var function in functions ?? [])
+            foreach (var function in functions ?? Array.Empty<FunctionDefinition>())
             {
                 var functionRoot = Path.GetFullPath(Path.GetDirectoryName(file)!);
                 function.ScriptFile = Path.GetRelativePath(root, Path.Combine(functionRoot, Path.GetFileName(function.ScriptFile)));
