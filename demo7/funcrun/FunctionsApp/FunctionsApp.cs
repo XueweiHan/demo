@@ -1,3 +1,4 @@
+using IniParser;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
@@ -129,15 +130,38 @@ class Function2
     {
         _logger.LogWarning($"{typeof(Function2)}");
         _logger.LogInformation($"{typeof(Function2).Name} Start --------------");
+
+        test3rdPartyLib();
+
         await Task.Delay(TimeSpan.FromSeconds(2), cancel);
         _logger.LogInformation($"{typeof(Function2).Name} End --------------");
+    }
+
+    void test3rdPartyLib()
+    {
+        string iniContent = @"
+            [General]
+            AppName=MyApp
+            Version=1.0
+            [User]
+            Name=John Doe
+            ";
+
+        var parser = new IniDataParser();
+        IniData data = parser.Parse(iniContent);
+
+        string appName = data["General"]["AppName"];
+        string userName = data["User"]["Name"];
+
+        _logger.LogWarning($"App: {appName}");
+        _logger.LogWarning($"User: {userName}");
     }
 }
 
 class Function3
 {
     [FunctionName("Function3_sb_queue")]
-    public Task Run([ServiceBusTrigger("%Queue:Name%", Connection = "MyServiceBusConnection")] string myQueueItem, ILogger log, CancellationToken cancell)
+    public Task Run([ServiceBusTrigger("%Queue:Name%", Connection = "MyServiceBusConnection")] string myQueueItem, ILogger log, CancellationToken cancel)
     {
         log.LogWarning($"{typeof(Function3)}");
         log.LogInformation($"C# ServiceBus queue trigger function processed message: {myQueueItem}");

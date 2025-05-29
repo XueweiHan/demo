@@ -7,7 +7,7 @@ using Microsoft.Extensions.Hosting;
 
 // If your project is using package Microsoft.Azure.Functions.Worker (isolated mode)
 // copy this file to your project and update the namespace
-//namespace Copy_This_File_To_Your_Project_And_Update_The_Namespace_To_Your_Project_Namespace;
+namespace FunctionsApp4;
 
 /// <summary>
 /// Provides extension methods for running an <see cref="IHost"/> in the context of Azure Functions.

@@ -120,11 +120,6 @@ internal partial class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
         }
     }
 
-    /// <summary>
-    /// Gets the log level string with ANSI color codes.
-    /// </summary>
-    /// <param name="logLevel">The log level.</param>
-    /// <returns>The formatted log level string.</returns>
     static string GetLogLevelString(LogLevel logLevel)
     {
         var color = logLevel switch
@@ -152,9 +147,6 @@ internal partial class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
         return $"{color}{level}{Reset}";
     }
 
-    /// <summary>
-    /// ANSI color codes mapping.
-    /// </summary>
     static readonly Dictionary<string, string> AnsiColors = new()
     {
         ["Black"] = "\x1B[30m",
@@ -170,14 +162,8 @@ internal partial class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
         ["BkRed"] = "\x1B[41m",
     };
 
-    /// <summary>
-    /// ANSI reset code.
-    /// </summary>
     static readonly string Reset = "\x1B[0m";
 
-    /// <summary>
-    /// Formatter name.
-    /// </summary>
     static readonly string FormatterName = "AnsiConsole";
 
     /// <summary>
@@ -187,7 +173,11 @@ internal partial class AnsiConsoleFormatter() : ConsoleFormatter(FormatterName)
     public static void LoggingBuilder(ILoggingBuilder loggingBuilder)
     {
         loggingBuilder
+#if DEBUG
+            .SetMinimumLevel(LogLevel.Debug)
+#else
             .SetMinimumLevel(LogLevel.Information)
+#endif
             .AddConsoleFormatter<AnsiConsoleFormatter, ConsoleFormatterOptions>()
             .AddConsole(options =>
             {

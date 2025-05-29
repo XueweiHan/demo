@@ -3,16 +3,17 @@
     "FunctionRunner": {
       "commandName": "Project",
       "environmentVariables": {
-        "AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\FunctionsApp3\\bin",
+        "AzureWebJobsScriptRoot": "C:\\repos\\demo\\demo7\\funcrun\\FunctionsApp4\\bin",
         "CONFIG_FILE": " ",
-        "CONFIG_JSON": "{\"Keyvaults\": [],    \"CopyFiles\": null,    \"Executables\": [      {        \"Exec\": \"cmd\",   \"Args\": \"\"     }    ]  }",
+        "--CONFIG_JSON": "{\"Keyvaults\": [],    \"CopyFiles\": null,    \"Executables\": [      {        \"Exec\": \"cmd\",   \"Args\": \"\"     }    ]  }",
+        "CONFIG_JSON": "{\"Keyvaults\": [],    \"CopyFiles\": null,    \"Executables\": []  }",
 
 
         "MyServiceBusConnection__fullyQualifiedNamespace": "hunter-shared-service-bus.servicebus.windows.net",
 
         "Function1_CronSchedule": "*/5 * * * * *",
         "--AzureWebJobs.Function1_timer.Disabled": "true",
-        "AzureWebJobs.FunctionX.Disabled": "true"
+        "--AzureWebJobs.FunctionX.Disabled": "true"
       }
     }
   }

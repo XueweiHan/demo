@@ -80,6 +80,7 @@ internal partial class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory
     protected object?[] PrepareParameters(params object[] arg)
     {
         var services = new ServiceCollection();
+
         foreach (var a in arg)
         {
             if (a is Tuple<Type, object> tuple)
@@ -91,6 +92,7 @@ internal partial class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory
                 services.AddSingleton(a.GetType(), a);
             }
         }
+
         services
             .AddLogging(loggingBuilder => loggingBuilder.Build(services))
             .AddSingleton<ILogger>(sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger(funcInfo.Function.EntryPoint));
@@ -141,9 +143,14 @@ internal partial class FunctionBaseService(FunctionInfo funcInfo, ILoggerFactory
         {
             expression = ExpressionPatternRegex().Replace(
                 expression,
-                match => funcInfo.ServiceProvider
-                            .GetRequiredService<IConfiguration>()
-                            .GetValue<string>(match.Groups[1].Value, match.Value));
+                match =>
+                {
+                    var resolvedValue = funcInfo.ServiceProvider
+                        .GetRequiredService<IConfiguration>()
+                        .GetValue<string>(match.Groups[1].Value, match.Value);
+
+                    return resolvedValue ?? match.Value; // Ensure a non-null fallback
+                });
         }
 
         return expression;

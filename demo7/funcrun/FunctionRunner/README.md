@@ -1,3 +1,13 @@
+# Function Runner
+
+## Usage
+
+1. Copy the appropriate `.cs` file from the `examples` folder into your Azure Function project.
+2. For Azure Functions in-process mode, use `FunctionRunnerBuilderExtensions.cs`.
+3. For Azure Functions isolated mode, use `FunctionRunnerHostExtensions.cs`.
+4. Update the file's namespace to match your application's namespace.
+
+
 # Create our own function base image
 ```
 #linux:

@@ -152,11 +152,6 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         return success;
     }
 
-    /// <summary>
-    /// Invokes the function core logic asynchronously.
-    /// </summary>
-    /// <param name="parameters">The parameters to pass to the function.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
     async Task InvokeAsyncCore(object?[] parameters)
     {
         var instance = ServiceProvider.GetService(type);
@@ -173,26 +168,22 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
     /// Loads all function infos from the specified root directory.
     /// </summary>
     /// <param name="root">The root directory.</param>
+    /// <param name="loggerFactory"> The logger factory.</param>
     /// <returns>A list of <see cref="FunctionInfo"/> objects.</returns>
-    public static List<FunctionInfo> Load(string root)
+    public static List<FunctionInfo> Load(string root, ILoggerFactory loggerFactory)
     {
         root = Path.GetFullPath(root);
         Directory.SetCurrentDirectory(root);
         var funcInfos = new List<FunctionInfo>();
 
-        LoadInProcessFunctions(root, funcInfos);
+        LoadInProcessFunctions(root, funcInfos, loggerFactory);
 
-        LoadIsolatedFunctions(root, funcInfos);
+        LoadIsolatedFunctions(root, funcInfos, loggerFactory);
 
         return funcInfos;
     }
 
-    /// <summary>
-    /// Loads in-memory functions from the specified root directory.
-    /// </summary>
-    /// <param name="root"></param>
-    /// <param name="funcInfos"></param>
-    private static void LoadInProcessFunctions(string root, List<FunctionInfo> funcInfos)
+    static void LoadInProcessFunctions(string root, List<FunctionInfo> funcInfos, ILoggerFactory loggerFactory)
     {
         var functionJsonFiles = Directory.GetFiles(root, "function.json", SearchOption.AllDirectories);
         foreach (var file in functionJsonFiles)
@@ -208,7 +199,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
             var typeName = Path.GetFileNameWithoutExtension(function.EntryPoint);
             var methodName = Path.GetExtension(function.EntryPoint).TrimStart('.');
 
-            var assembly = Assembly.LoadFrom(dllPath);
+            var assembly = IsolatedLoadContext.LoadAssembly(dllPath, loggerFactory);
             var targetType = assembly.GetType(typeName)!;
             var method = targetType.GetMethod(methodName)!;
 
@@ -221,12 +212,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         }
     }
 
-    /// <summary>
-    /// Loads isolated functions from the specified root directory.
-    /// </summary>
-    /// <param name="root"></param>
-    /// <param name="funcInfos"></param>
-    static void LoadIsolatedFunctions(string root, List<FunctionInfo> funcInfos)
+    static void LoadIsolatedFunctions(string root, List<FunctionInfo> funcInfos, ILoggerFactory loggerFactory)
     {
         var functionJsonFiles = Directory.GetFiles(root, "functions.metadata", SearchOption.AllDirectories);
         foreach (var file in functionJsonFiles)
@@ -242,7 +228,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
                 var typeName = Path.GetFileNameWithoutExtension(function.EntryPoint);
                 var methodName = Path.GetExtension(function.EntryPoint).TrimStart('.');
                 
-                var assembly = Assembly.LoadFrom(dllPath);
+                var assembly = IsolatedLoadContext.LoadAssembly(dllPath, loggerFactory);
                 var targetType = assembly.GetType(typeName)!;
                 var method = targetType.GetMethod(methodName)!;
 

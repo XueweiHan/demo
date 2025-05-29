@@ -27,7 +27,7 @@ class Program
         using var loggerFactory = LoggerFactory.Create(AnsiConsoleFormatter.LoggingBuilder);
 
         using var host = Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration(config =>
+            .ConfigureHostConfiguration(config =>
             {
                 config.AddJsonFile("appSettings.json", optional: true);
                 config.AddEnvironmentVariables();
@@ -48,17 +48,18 @@ class Program
 
                 if (!appSettings.DisableFunctionRunner && !string.IsNullOrEmpty(appSettings.AzureWebJobsScriptRoot))
                 {
-                    var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot);
+                    var functionInfos = FunctionInfo.Load(appSettings.AzureWebJobsScriptRoot, loggerFactory);
 
                     foreach (var funcInfo in functionInfos)
                     {
                         AddFunctionServices(services, funcInfo, loggerFactory);
                     }
                 }
-            })
-            .ConfigureHostOptions(options =>
-            {
-                options.ShutdownTimeout = TimeSpan.FromSeconds(appSettings.ShutdownTimeoutInSeconds);
+
+                services.Configure<HostOptions>(options =>
+                {
+                    options.ShutdownTimeout = TimeSpan.FromSeconds(appSettings.ShutdownTimeoutInSeconds);
+                });
             })
             .Build();
 

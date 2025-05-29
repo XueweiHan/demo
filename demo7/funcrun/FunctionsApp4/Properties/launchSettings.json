@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "FunctionsApp4": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7147",
+      "launchBrowser": false
+    }
+  }
+}

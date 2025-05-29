@@ -1,4 +1,4 @@
-﻿// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // <copyright file="FunctionRunnerBuilderExtensions.cs" company="Microsoft">
 //     Copyright (c) Microsoft Corporation.  All rights reserved.
 // </copyright>
@@ -7,7 +7,7 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 
 // If your project is using package Microsoft.Azure.Functions.Extensions (in-process mode)
 // copy this file to your project and update the namespace
-namespace FunctionsApp;
+namespace Copy_This_File_To_Your_Project_And_Update_The_Namespace_To_Your_Project_Namespace;
 
 /// <summary>
 /// Extensions for the FunctionRunnerBuilder.
