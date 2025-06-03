@@ -1,12 +1,15 @@
 # skopeo copy oci-archive:messagebroker_1.0.03057.1185.tar docker-daemon:messagebroker:latest
+# skopeo copy oci-archive:/src/demo/temp/learningcentralsync_1.0.03075.1225.tar docker-daemon:learningcentralsync:latest
 
 # docker build -t ptmsdev/mb:latest -f Dockerfile_mb .
 
 # docker push ptmsdev/mb:latest
 
+ARG service_name=learningcentralsync
+
 
 ARG dotnet_version=8.0
-FROM messagebroker:latest AS original
+FROM ${service_name}:latest AS original
 
 ##################################################################################################
 # tag source: https://github.com/dotnet/dotnet-docker/blob/main/README.runtime.md
@@ -16,11 +19,15 @@ ARG dotnet_version=8.0
 
 FROM mcr.microsoft.com/dotnet/sdk:${dotnet_version}-alpine AS build
 
-ARG configuration=Release
+ARG configuration=Debug
 WORKDIR /src
 COPY . .
 
 # RUN dotnet add package Microsoft.Data.SqlClient --version 6.0.2
+
+# RUN dotnet add package Microsoft.Identity.Client
+# RUN dotnet add package Microsoft.Extensions.Http
+# RUN dotnet add package Microsoft.Azure.WebJobs
 
 RUN dotnet publish *.csproj -c $configuration -o /publish -r linux-musl-x64
 

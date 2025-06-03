@@ -18,6 +18,7 @@ class IsolatedLoadContext(string pluginPath, ILoggerFactory loggerFactory) : Ass
     {
         // For in-process mode
         "Microsoft.Azure.Functions.Extensions",
+        "Microsoft.Extensions.Configuration.EnvironmentVariables",
 
         // For isolated mode
         "Microsoft.Azure.Functions.Worker.Extensions.ServiceBus",

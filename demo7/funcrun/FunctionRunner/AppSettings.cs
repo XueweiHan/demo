@@ -104,12 +104,12 @@ class Secret
     /// <summary>
     /// Gets or sets the file path for the secret.
     /// </summary>
-    public string? FilePath { get; set; }
+    public string? File { get; set; }
 
     /// <summary>
     /// Gets or sets the environment variable for the secret.
     /// </summary>
-    public string? EnvVar { get; set; }
+    public string? Env { get; set; }
 }
 
 /// <summary>

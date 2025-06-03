@@ -3,6 +3,7 @@
 //     Copyright (c) Microsoft Corporation.  All rights reserved.
 // </copyright>
 // ---------------------------------------------------------------------------
+#nullable enable
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 
 // If your project is using package Microsoft.Azure.Functions.Extensions (in-process mode)
@@ -34,5 +35,5 @@ static class FunctionRunnerBuilderExtensions
         return FunctionRunnerHostBuilderContext ?? FunctionsBuilderExtensions.GetContext(builder);
     }
 
-    static FunctionsHostBuilderContext FunctionRunnerHostBuilderContext { get; set; }
+    static FunctionsHostBuilderContext? FunctionRunnerHostBuilderContext { get; set; }
 }

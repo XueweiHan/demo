@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-[assembly: System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+//[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("FunctionRunner.Tests")]
 
 namespace FunctionRunner;
 

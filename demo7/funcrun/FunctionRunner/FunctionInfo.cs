@@ -102,8 +102,8 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
     public async Task<bool> InvokeAsync(object?[] parameters, ILoggerFactory loggerFactory)
     {
         bool success = false;
-
-        loggerFactory.CreateLogger("T.Cyan0").LogInformation($"{Name} is triggered");
+        var logger = loggerFactory.CreateLogger("T.Cyan0");
+        logger.LogInformation($"{Name} is triggered");
 
         try
         {
@@ -120,8 +120,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
 
                 try
                 {
-                    await InvokeAsyncCore(parameters);
-                    success = true;
+                    success = await InvokeAsyncCore(parameters);
                 }
                 catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
                 {
@@ -129,7 +128,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
                 }
                 catch (OperationCanceledException)
                 {
-                    loggerFactory.CreateLogger("T.Cyan0").LogWarning($"{Name} is cancelled");
+                    logger.LogWarning($"{Name} is cancelled");
                 }
                 finally
                 {
@@ -138,8 +137,7 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
             }
             else
             {
-                await InvokeAsyncCore(parameters);
-                success = true;
+                success = await InvokeAsyncCore(parameters);
             }
         }
         catch (StackOverflowException) { throw; }
@@ -148,11 +146,18 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         {
             loggerFactory.CreateLogger("T.Cyan0.Red3").LogError(ex, $"{Name} encountered an exception");
         }
+        finally
+        {
+            if (success)
+            {
+                logger.LogInformation($"{Name} executed successfully");
+            }
+        }
 
         return success;
     }
 
-    async Task InvokeAsyncCore(object?[] parameters)
+    async Task<Boolean> InvokeAsyncCore(object?[] parameters)
     {
         var instance = ServiceProvider.GetService(type);
 
@@ -162,6 +167,8 @@ class FunctionInfo(FunctionDefinition function, Type type, MethodInfo method, IS
         {
             await task;
         }
+
+        return true;
     }
 
     /// <summary>
